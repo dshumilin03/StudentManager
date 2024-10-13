@@ -3,6 +3,7 @@ package app
 import (
 	"StudentManager/internal/config"
 	"StudentManager/internal/http/handlers"
+	"StudentManager/internal/http/services"
 	"StudentManager/internal/repository"
 	"StudentManager/pkg/database/postgres"
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,7 @@ func Run() {
 		return
 	}
 	repos := repository.NewRepositories(db)
+	services := services.NewServices(repos.Students)
 
 	r := chi.NewRouter()
 
@@ -27,8 +29,10 @@ func Run() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Post("/home", handlers.CreateStudent(repos.Students))
+	r.Post("/students", handlers.CreateStudent(services.Students))
+	r.Get("/students", handlers.GetAllStudents(services.Students))
 
+	log.Println("Listening on server address " + cfg.Address)
 	srv := &http.Server{
 		Addr:         cfg.Address,
 		Handler:      r,

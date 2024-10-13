@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 )
 
-func New(database config.Database) (*pgx.Conn, error) {
+func New(database config.Database) (*pgxpool.Pool, error) {
 
 	// Формирование строки подключения
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
@@ -25,7 +25,7 @@ func New(database config.Database) (*pgx.Conn, error) {
 		log.Fatal(err)
 	}
 
-	client, err := pgx.Connect(context.Background(), connStr)
+	client, err := pgxpool.Connect(context.Background(), connStr)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 		return nil, err
