@@ -20,7 +20,7 @@ type CreateStudentRequest struct {
 	Email       string `json:"email" env-required:"true"`
 }
 
-type GetStudentByIdRequst struct {
+type StudentIdRequst struct {
 	Id int `json:"id" env-required:"true"`
 }
 
@@ -91,7 +91,7 @@ func GetAllStudents(service services.StudentService) http.HandlerFunc {
 func GetStudentById(service services.StudentService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var req GetStudentByIdRequst
+		var req StudentIdRequst
 
 		err := render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
@@ -120,12 +120,51 @@ func GetStudentById(service services.StudentService) http.HandlerFunc {
 			return
 		}
 
-		log.Println("received all students")
+		log.Println("received student by id")
 
 		responseFoundStudent(w, r, student)
 	}
 }
 
+func DeleteStudentById(service services.StudentService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var req StudentIdRequst
+
+		err := render.DecodeJSON(r.Body, &req)
+		if errors.Is(err, io.EOF) {
+
+			log.Println("request body is empty")
+
+			render.JSON(w, r, resp.Error("empty request"))
+
+			return
+		}
+		if err != nil {
+			log.Printf("failed to decode request body %v", err)
+
+			render.JSON(w, r, resp.Error("failed to decode request"))
+
+			return
+		}
+
+		log.Println("request body decoded", slog.Any("request", req))
+
+		err = service.DeleteById(context.Background(), req.Id)
+		if err != nil {
+			log.Printf("failed to delete student %v", err)
+
+			render.JSON(w, r, resp.Error("failed to delete student"))
+			return
+		}
+
+		log.Println("student deleted")
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// TODO rewrite that responses into structs Response
 func responseOK(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, http.StatusOK)
 }

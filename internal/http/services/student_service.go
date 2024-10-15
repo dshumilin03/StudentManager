@@ -85,6 +85,17 @@ func (repo *StudentServiceImpl) GetById(ctx context.Context, id int) (domain.Stu
 	return students, nil
 }
 
+func (repo *StudentServiceImpl) DeleteById(ctx context.Context, id int) error {
+	service := repo.repo
+
+	err := service.DeleteById(ctx, id)
+	if err != nil {
+		log.Printf("failed to delete student %v", err)
+	}
+
+	return nil
+}
+
 func convertStudentRowToDomain(row pgx.Row) (domain.Student, error) {
 	var student domain.Student
 

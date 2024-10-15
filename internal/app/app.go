@@ -36,6 +36,7 @@ func Run() {
 
 		r.Route("/{Id}", func(r chi.Router) {
 			r.Get("/", handlers.GetStudentById(studentService)) //TODO add path variable
+			r.Delete("/", handlers.DeleteStudentById(studentService))
 		})
 	})
 

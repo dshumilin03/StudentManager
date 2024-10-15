@@ -61,7 +61,7 @@ func (repo *StudentRepoPostgres) Update(ctx context.Context, student domain.Stud
 	_ = database
 	return nil
 }
-func (repo *StudentRepoPostgres) Delete(ctx context.Context, id int) error {
+func (repo *StudentRepoPostgres) DeleteById(ctx context.Context, id int) error {
 	database := repo.db
 	_, err := database.Exec(ctx, "delete from student where id = $1", id)
 	if err != nil {
