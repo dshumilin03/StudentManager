@@ -10,6 +10,7 @@ import (
 type StudentService interface {
 	Create(ctx context.Context, fullName string, age int, groupNumber string, email string) (domain.Student, error)
 	GetAll(ctx context.Context) ([]domain.Student, error)
+	GetById(ctx context.Context, id int) (domain.Student, error)
 }
 
 type Services struct {

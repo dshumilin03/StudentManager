@@ -2,22 +2,15 @@ package services
 
 import (
 	"StudentManager/internal/domain"
-	resp "StudentManager/internal/http/response"
 	"StudentManager/internal/repository"
 	"context"
-	"github.com/go-chi/render"
 	"github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4"
 	"log"
-	"net/http"
 )
 
 type GetStudentRequest struct {
 	FullName string `json:"full_name" env-required:"true"`
-}
-
-type Response struct {
-	resp.Response
 }
 
 type StudentServiceImpl struct {
@@ -78,10 +71,30 @@ func (repo *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.Student, e
 	return students, nil
 }
 
-func responseOK(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, Response{
-		Response: resp.OK(),
-	})
+func (repo *StudentServiceImpl) GetById(ctx context.Context, id int) (domain.Student, error) {
+	service := repo.repo
+
+	row := service.GetById(ctx, id)
+
+	students, err := convertStudentRowToDomain(row)
+	if err != nil {
+		log.Printf("failed to convert students into domain %v", err)
+
+	}
+
+	return students, nil
+}
+
+func convertStudentRowToDomain(row pgx.Row) (domain.Student, error) {
+	var student domain.Student
+
+	err := row.Scan(&student.Id, &student.FullName, &student.Age, &student.GroupNumber, &student.Email)
+
+	if err != nil {
+		return domain.Student{}, err
+	}
+
+	return student, err
 }
 
 func convertStudentsRowsToDomain(rows pgx.Rows) ([]domain.Student, error) {

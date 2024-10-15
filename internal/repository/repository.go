@@ -10,7 +10,7 @@ import (
 
 type StudentRepository interface {
 	Create(ctx context.Context, student domain.Student) (pgx.Rows, error)
-	Get(ctx context.Context, id int) error
+	GetById(ctx context.Context, id int) pgx.Row
 	Update(ctx context.Context, student domain.Student) error
 	Delete(ctx context.Context, id int) error
 	GetAll(ctx context.Context) (pgx.Rows, error)

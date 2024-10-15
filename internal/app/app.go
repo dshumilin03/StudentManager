@@ -29,8 +29,15 @@ func Run() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Post("/students", handlers.CreateStudent(services.Students))
-	r.Get("/students", handlers.GetAllStudents(services.Students))
+	r.Route("/students", func(r chi.Router) {
+		studentService := services.Students
+		r.Post("/", handlers.CreateStudent(studentService))
+		r.Get("/", handlers.GetAllStudents(studentService))
+
+		r.Route("/{Id}", func(r chi.Router) {
+			r.Get("/", handlers.GetStudentById(studentService)) //TODO add path variable
+		})
+	})
 
 	log.Println("Listening on server address " + cfg.Address)
 	srv := &http.Server{

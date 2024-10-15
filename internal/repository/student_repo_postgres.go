@@ -47,11 +47,13 @@ func (repo *StudentRepoPostgres) Create(ctx context.Context, student domain.Stud
 
 	return studentRow, err
 }
-func (repo *StudentRepoPostgres) Get(ctx context.Context, id int) error {
-	// TODO Implement
+func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int) pgx.Row {
 	database := repo.db
-	_ = database
-	return nil
+	// TODO if returns null need to throw exception
+	student := database.QueryRow(ctx,
+		"select * from student where id = $1", id)
+
+	return student
 }
 func (repo *StudentRepoPostgres) Update(ctx context.Context, student domain.Student) error {
 	// TODO Implement

@@ -1,7 +1,7 @@
 env: "local"
 database:
   username: postgres
-  password: postgres
+  password: password
   host: localhost
   port: 5432
   dbname: student_manager_db

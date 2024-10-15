@@ -20,6 +20,10 @@ type CreateStudentRequest struct {
 	Email       string `json:"email" env-required:"true"`
 }
 
+type GetStudentByIdRequst struct {
+	Id int `json:"id" env-required:"true"`
+}
+
 type GetStudentRequest struct {
 	FullName string `json:"full_name" env-required:"true"`
 }
@@ -36,21 +40,21 @@ func CreateStudent(service services.StudentService) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
 
-			log.Println("response body is empty")
+			log.Println("request body is empty")
 
-			render.JSON(w, r, resp.Error("empty response"))
+			render.JSON(w, r, resp.Error("empty request"))
 
 			return
 		}
 		if err != nil {
-			log.Printf("failed to decode response body %v", err)
+			log.Printf("failed to decode request body %v", err)
 
-			render.JSON(w, r, resp.Error("failed to decode response"))
+			render.JSON(w, r, resp.Error("failed to decode request"))
 
 			return
 		}
 
-		log.Println("response body decoded", slog.Any("response", req))
+		log.Println("request body decoded", slog.Any("response", req))
 
 		student, err := service.Create(context.Background(), req.FullName, req.Age, req.GroupNumber, req.Email)
 
@@ -84,19 +88,64 @@ func GetAllStudents(service services.StudentService) http.HandlerFunc {
 	}
 }
 
+func GetStudentById(service services.StudentService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var req GetStudentByIdRequst
+
+		err := render.DecodeJSON(r.Body, &req)
+		if errors.Is(err, io.EOF) {
+
+			log.Println("request body is empty")
+
+			render.JSON(w, r, resp.Error("empty request"))
+
+			return
+		}
+		if err != nil {
+			log.Printf("failed to decode request body %v", err)
+
+			render.JSON(w, r, resp.Error("failed to decode request"))
+
+			return
+		}
+
+		log.Println("request body decoded", slog.Any("request", req))
+
+		student, err := service.GetById(context.Background(), req.Id)
+		if err != nil {
+			log.Printf("failed to get student %v", err)
+
+			render.JSON(w, r, resp.Error("failed to get student"))
+			return
+		}
+
+		log.Println("received all students")
+
+		responseFoundStudent(w, r, student)
+	}
+}
+
 func responseOK(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, Response{
-		Response: resp.OK(),
-	})
+	render.JSON(w, r, http.StatusOK)
 }
 
 func responseFoundStudents(w http.ResponseWriter, r *http.Request, students []domain.Student) {
+	w.WriteHeader(http.StatusFound)
 	render.JSON(w, r, Response{
-		Response: resp.FoundAll(students),
+		Response: resp.FoundAllStudents(students),
+	})
+}
+
+func responseFoundStudent(w http.ResponseWriter, r *http.Request, student domain.Student) {
+	w.WriteHeader(http.StatusFound)
+	render.JSON(w, r, Response{
+		Response: resp.FoundStudent(student),
 	})
 }
 
 func responseCreated(w http.ResponseWriter, r *http.Request, student domain.Student) {
+	w.WriteHeader(http.StatusCreated)
 	render.JSON(w, r, Response{
 		Response: resp.Created(student),
 	})
