@@ -16,6 +16,7 @@ func FoundAllStudents(students []domain.Student) Response {
 	}
 }
 
+// TODO Reason to get all to one response with student?
 func FoundStudent(student domain.Student) Response {
 	return Response{
 		Student: &student,
@@ -23,6 +24,12 @@ func FoundStudent(student domain.Student) Response {
 }
 
 func Created(student domain.Student) Response {
+	return Response{
+		Student: &student,
+	}
+}
+
+func Updated(student domain.Student) Response {
 	return Response{
 		Student: &student,
 	}

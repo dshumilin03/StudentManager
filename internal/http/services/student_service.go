@@ -71,7 +71,7 @@ func (repo *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.Student, e
 	return students, nil
 }
 
-func (repo *StudentServiceImpl) GetById(ctx context.Context, id int) (domain.Student, error) {
+func (repo *StudentServiceImpl) GetById(ctx context.Context, id int64) (domain.Student, error) {
 	service := repo.repo
 
 	row := service.GetById(ctx, id)
@@ -85,7 +85,40 @@ func (repo *StudentServiceImpl) GetById(ctx context.Context, id int) (domain.Stu
 	return students, nil
 }
 
-func (repo *StudentServiceImpl) DeleteById(ctx context.Context, id int) error {
+func (repo *StudentServiceImpl) Update(
+	ctx context.Context,
+	id int64,
+	fullName string,
+	age int,
+	groupNumber string,
+	email string,
+) (domain.Student, error) {
+	service := repo.repo
+
+	student := domain.Student{
+		Id:          id,
+		FullName:    fullName,
+		Age:         age,
+		GroupNumber: groupNumber,
+		Email:       email,
+	}
+
+	studentRow, err := service.Update(ctx, student)
+	if err != nil {
+		log.Printf("failed to update student %v", err)
+		return domain.Student{}, err
+	}
+
+	updatedStudent, err := convertStudentsRowsToDomain(studentRow)
+	if err != nil {
+		log.Printf("failed to convert student into domain %v", err)
+		return domain.Student{}, err
+	}
+
+	return updatedStudent[0], err
+}
+
+func (repo *StudentServiceImpl) DeleteById(ctx context.Context, id int64) error {
 	service := repo.repo
 
 	err := service.DeleteById(ctx, id)

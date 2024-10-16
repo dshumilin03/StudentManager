@@ -20,8 +20,16 @@ type CreateStudentRequest struct {
 	Email       string `json:"email" env-required:"true"`
 }
 
+type UpdateStudentRequest struct {
+	Id          int64  `json:"id" env-required:"true"`
+	FullName    string `json:"full_name" env-required:"true"`
+	Age         int    `json:"age" env-required:"true"`
+	GroupNumber string `json:"group_number"`
+	Email       string `json:"email" env-required:"true"`
+}
+
 type StudentIdRequst struct {
-	Id int `json:"id" env-required:"true"`
+	Id int64 `json:"id" env-required:"true"`
 }
 
 type GetStudentRequest struct {
@@ -126,6 +134,45 @@ func GetStudentById(service services.StudentService) http.HandlerFunc {
 	}
 }
 
+func UpdateStudent(service services.StudentService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var req UpdateStudentRequest
+
+		err := render.DecodeJSON(r.Body, &req)
+		if errors.Is(err, io.EOF) {
+
+			log.Println("request body is empty")
+
+			render.JSON(w, r, resp.Error("empty request"))
+
+			return
+		}
+		if err != nil {
+			log.Printf("failed to decode request body %v", err)
+
+			render.JSON(w, r, resp.Error("failed to decode request"))
+
+			return
+		}
+
+		log.Println("request body decoded", slog.Any("response", req))
+
+		student, err := service.Update(context.Background(), req.Id, req.FullName, req.Age, req.GroupNumber, req.Email)
+
+		if err != nil {
+			log.Printf("failed to update student %v", err)
+
+			render.JSON(w, r, resp.Error("failed to update student"))
+			return
+		}
+
+		log.Println("student updated", slog.Any("response", req))
+
+		responseUpdated(w, r, student)
+	}
+}
+
 func DeleteStudentById(service services.StudentService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -187,5 +234,12 @@ func responseCreated(w http.ResponseWriter, r *http.Request, student domain.Stud
 	w.WriteHeader(http.StatusCreated)
 	render.JSON(w, r, Response{
 		Response: resp.Created(student),
+	})
+}
+
+func responseUpdated(w http.ResponseWriter, r *http.Request, student domain.Student) {
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, Response{
+		Response: resp.Updated(student),
 	})
 }

@@ -23,7 +23,7 @@ func (repo *StudentRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 	database := repo.db
 	// TODO if returns null need to throw exception
 	students, err := database.Query(ctx,
-		"select * from student")
+		"select * from student order by id")
 	if err != nil {
 		log.Printf("%s: query executement", err)
 		return nil, err
@@ -43,11 +43,11 @@ func (repo *StudentRepoPostgres) Create(ctx context.Context, student domain.Stud
 		log.Printf("%s: query executement", err)
 		return nil, err
 	}
-	studentRow, err := database.Query(ctx, "select * from student where email = $1", student.Email)
+	studentRows, err := database.Query(ctx, "select * from student where email = $1", student.Email)
 
-	return studentRow, err
+	return studentRows, err
 }
-func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int) pgx.Row {
+func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row {
 	database := repo.db
 	// TODO if returns null need to throw exception
 	student := database.QueryRow(ctx,
@@ -55,13 +55,21 @@ func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int) pgx.Row {
 
 	return student
 }
-func (repo *StudentRepoPostgres) Update(ctx context.Context, student domain.Student) error {
-	// TODO Implement
+func (repo *StudentRepoPostgres) Update(ctx context.Context, student domain.Student) (pgx.Rows, error) {
 	database := repo.db
-	_ = database
-	return nil
+
+	_, err := database.Query(ctx,
+		"update student set full_name = $1, age = $2, group_number = $3, email = $4 where id = $5",
+		student.FullName, student.Age, student.GroupNumber, student.Email, student.Id)
+	if err != nil {
+		log.Printf("%s: query executement or user doesn't exists", err)
+		return nil, err
+	}
+	studentRows, err := database.Query(ctx, "select * from student where id = $1", student.Id)
+
+	return studentRows, err
 }
-func (repo *StudentRepoPostgres) DeleteById(ctx context.Context, id int) error {
+func (repo *StudentRepoPostgres) DeleteById(ctx context.Context, id int64) error {
 	database := repo.db
 	_, err := database.Exec(ctx, "delete from student where id = $1", id)
 	if err != nil {
