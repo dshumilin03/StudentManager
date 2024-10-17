@@ -4,6 +4,7 @@ import (
 	"StudentManager/internal/domain"
 	"StudentManager/internal/repository"
 	"context"
+	"errors"
 	"github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4"
 	"log"
@@ -17,7 +18,7 @@ type StudentServiceImpl struct {
 	repo repository.StudentRepository
 }
 
-func NewStudentService(repo repository.StudentRepository) *StudentServiceImpl {
+func NewStudentServiceImpl(repo repository.StudentRepository) *StudentServiceImpl {
 	return &StudentServiceImpl{
 		repo: repo,
 	}
@@ -39,6 +40,10 @@ func (repo *StudentServiceImpl) Create(
 		Email:       email,
 	}
 
+	if repo.isStudentExistsByEmail(ctx, email) {
+		log.Println("student already exists")
+		return domain.Student{}, errors.New("student already exists")
+	}
 	studentRow, err := service.Create(ctx, student)
 	if err != nil {
 		log.Printf("failed to create student %v", err)
@@ -103,6 +108,11 @@ func (repo *StudentServiceImpl) Update(
 		Email:       email,
 	}
 
+	if !repo.isStudentExistsById(ctx, id) {
+		log.Println("student doesn't exists")
+		return domain.Student{}, errors.New("student doesn't exists")
+	}
+
 	studentRow, err := service.Update(ctx, student)
 	if err != nil {
 		log.Printf("failed to update student %v", err)
@@ -121,6 +131,10 @@ func (repo *StudentServiceImpl) Update(
 func (repo *StudentServiceImpl) DeleteById(ctx context.Context, id int64) error {
 	service := repo.repo
 
+	if !repo.isStudentExistsById(ctx, id) {
+		log.Println("student doesn't exists")
+		return errors.New("student does not exist")
+	}
 	err := service.DeleteById(ctx, id)
 	if err != nil {
 		log.Printf("failed to delete student %v", err)
@@ -154,4 +168,24 @@ func convertStudentsRowsToDomain(rows pgx.Rows) ([]domain.Student, error) {
 	}
 
 	return students, nil
+}
+
+func (repo *StudentServiceImpl) isStudentExistsByEmail(ctx context.Context, email string) bool {
+	service := repo.repo
+
+	if errors.Is(service.GetByEmail(ctx, email).Scan(), pgx.ErrNoRows) {
+		return false
+	}
+
+	return true
+}
+
+func (repo *StudentServiceImpl) isStudentExistsById(ctx context.Context, id int64) bool {
+	service := repo.repo
+
+	if errors.Is(service.GetById(ctx, id).Scan(), pgx.ErrNoRows) {
+		return false
+	}
+
+	return true
 }

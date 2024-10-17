@@ -21,7 +21,7 @@ func NewStudentRepoPostgres(db *pgxpool.Pool) *StudentRepoPostgres {
 
 func (repo *StudentRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 	database := repo.db
-	// TODO if returns null need to throw exception
+
 	students, err := database.Query(ctx,
 		"select * from student order by id")
 	if err != nil {
@@ -49,7 +49,7 @@ func (repo *StudentRepoPostgres) Create(ctx context.Context, student domain.Stud
 }
 func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row {
 	database := repo.db
-	// TODO if returns null need to throw exception
+
 	student := database.QueryRow(ctx,
 		"select * from student where id = $1", id)
 
@@ -77,4 +77,13 @@ func (repo *StudentRepoPostgres) DeleteById(ctx context.Context, id int64) error
 		return err
 	}
 	return err
+}
+
+func (repo *StudentRepoPostgres) GetByEmail(ctx context.Context, email string) pgx.Row {
+	database := repo.db
+
+	student := database.QueryRow(ctx,
+		"select * from student where email = $1", email)
+
+	return student
 }

@@ -64,18 +64,28 @@ func CreateStudent(service services.StudentService) http.HandlerFunc {
 
 		log.Println("request body decoded", slog.Any("response", req))
 
-		student, err := service.Create(context.Background(), req.FullName, req.Age, req.GroupNumber, req.Email)
+		if req.Age != 0 && req.Email != "" && req.FullName != "" && req.GroupNumber != "" {
+			student, err := service.Create(context.Background(), req.FullName, req.Age, req.GroupNumber, req.Email)
+			if err != nil {
+				if err.Error() == "student already exists" {
+					w.WriteHeader(http.StatusConflict)
+					render.JSON(w, r, resp.Error("student already exists"))
+					return
+				}
 
-		if err != nil {
-			log.Printf("failed to create student %v", err)
+				log.Printf("failed to create student %v", err)
 
-			render.JSON(w, r, resp.Error("failed to create student"))
-			return
+				render.JSON(w, r, resp.Error("failed to create student"))
+				return
+			}
+			log.Println("student added", slog.Any("response", req))
+
+			responseCreated(w, r, student)
+		} else {
+			log.Println("invalid request")
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, resp.Error("invalid request"))
 		}
-
-		log.Println("student added", slog.Any("response", req))
-
-		responseCreated(w, r, student)
 	}
 }
 
@@ -161,6 +171,12 @@ func UpdateStudent(service services.StudentService) http.HandlerFunc {
 		student, err := service.Update(context.Background(), req.Id, req.FullName, req.Age, req.GroupNumber, req.Email)
 
 		if err != nil {
+			if err.Error() == "student doesn't exists" {
+				w.WriteHeader(http.StatusNotFound)
+				render.JSON(w, r, resp.Error("student doesn't exists"))
+				return
+			}
+
 			log.Printf("failed to update student %v", err)
 
 			render.JSON(w, r, resp.Error("failed to update student"))
@@ -199,6 +215,14 @@ func DeleteStudentById(service services.StudentService) http.HandlerFunc {
 
 		err = service.DeleteById(context.Background(), req.Id)
 		if err != nil {
+
+			// TODO make own types of errors
+			if err.Error() == "student does not exist" {
+				w.WriteHeader(http.StatusNotFound)
+				render.JSON(w, r, resp.Error("student does not exist"))
+				return
+			}
+
 			log.Printf("failed to delete student %v", err)
 
 			render.JSON(w, r, resp.Error("failed to delete student"))
