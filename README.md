@@ -17,16 +17,23 @@ Group includes a bunch of students, it has:
 
 ## Api possibilities
 
-### Student
+### Student Service
 
 - Add student
 - Get student
 - Update student data
 - Delete student
 
-### Group
+### Group Service
 
 - Add group
 - Get group
 - Update group data
 - Delete group
+
+### Student Manager Service
+It's a structure that provides different operations with Groups and Students
+- add Student to Group
+- remove student from group
+- contains Student Service
+- contains Group Service
