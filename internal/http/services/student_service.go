@@ -15,23 +15,27 @@ type GetStudentRequest struct {
 }
 
 type StudentServiceImpl struct {
-	repo repository.StudentRepository
+	studentRepository repository.StudentRepository
+	groupService      GroupService
 }
 
-func NewStudentServiceImpl(repo repository.StudentRepository) *StudentServiceImpl {
+func NewStudentServiceImpl(repo repository.StudentRepository, service GroupService) *StudentServiceImpl {
 	return &StudentServiceImpl{
-		repo: repo,
+		studentRepository: repo,
+		groupService:      service,
 	}
 }
 
-func (repo *StudentServiceImpl) Create(
+func (studentService *StudentServiceImpl) Create(
 	ctx context.Context,
 	fullName string,
 	age int,
 	groupNumber string,
 	email string,
 ) (domain.Student, error) {
-	service := repo.repo
+
+	repo := studentService.studentRepository
+	groupService := studentService.groupService
 
 	student := domain.Student{
 		FullName:    fullName,
@@ -40,11 +44,17 @@ func (repo *StudentServiceImpl) Create(
 		Email:       email,
 	}
 
-	if repo.isStudentExistsByEmail(ctx, email) {
+	if studentService.IsStudentExistsByEmail(ctx, email) {
 		log.Println("student already exists")
 		return domain.Student{}, errors.New("student already exists")
 	}
-	studentRow, err := service.Create(ctx, student)
+
+	if !groupService.IsGroupExistsByNumber(ctx, groupNumber) {
+		log.Println("group doesn't exist")
+		return domain.Student{}, errors.New("group doesn't exist")
+	}
+
+	studentRow, err := repo.Create(ctx, student)
 	if err != nil {
 		log.Printf("failed to create student %v", err)
 		return domain.Student{}, err
@@ -59,8 +69,8 @@ func (repo *StudentServiceImpl) Create(
 	return createdStudent[0], err
 }
 
-func (repo *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.Student, error) {
-	service := repo.repo
+func (studentService *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.Student, error) {
+	service := studentService.studentRepository
 
 	rows, err := service.GetAll(ctx)
 	if err != nil {
@@ -76,8 +86,8 @@ func (repo *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.Student, e
 	return students, nil
 }
 
-func (repo *StudentServiceImpl) GetById(ctx context.Context, id int64) (domain.Student, error) {
-	service := repo.repo
+func (studentService *StudentServiceImpl) GetById(ctx context.Context, id int64) (domain.Student, error) {
+	service := studentService.studentRepository
 
 	row := service.GetById(ctx, id)
 
@@ -90,7 +100,7 @@ func (repo *StudentServiceImpl) GetById(ctx context.Context, id int64) (domain.S
 	return students, nil
 }
 
-func (repo *StudentServiceImpl) Update(
+func (studentService *StudentServiceImpl) Update(
 	ctx context.Context,
 	id int64,
 	fullName string,
@@ -98,7 +108,7 @@ func (repo *StudentServiceImpl) Update(
 	groupNumber string,
 	email string,
 ) (domain.Student, error) {
-	service := repo.repo
+	repo := studentService.studentRepository
 
 	student := domain.Student{
 		Id:          id,
@@ -108,12 +118,12 @@ func (repo *StudentServiceImpl) Update(
 		Email:       email,
 	}
 
-	if !repo.isStudentExistsById(ctx, id) {
+	if !studentService.IsStudentExistsById(ctx, id) {
 		log.Println("student doesn't exists")
 		return domain.Student{}, errors.New("student doesn't exists")
 	}
 
-	studentRow, err := service.Update(ctx, student)
+	studentRow, err := repo.Update(ctx, student)
 	if err != nil {
 		log.Printf("failed to update student %v", err)
 		return domain.Student{}, err
@@ -128,14 +138,14 @@ func (repo *StudentServiceImpl) Update(
 	return updatedStudent[0], err
 }
 
-func (repo *StudentServiceImpl) DeleteById(ctx context.Context, id int64) error {
-	service := repo.repo
+func (studentService *StudentServiceImpl) DeleteById(ctx context.Context, id int64) error {
+	repo := studentService.studentRepository
 
-	if !repo.isStudentExistsById(ctx, id) {
+	if !studentService.IsStudentExistsById(ctx, id) {
 		log.Println("student doesn't exists")
 		return errors.New("student does not exist")
 	}
-	err := service.DeleteById(ctx, id)
+	err := repo.DeleteById(ctx, id)
 	if err != nil {
 		log.Printf("failed to delete student %v", err)
 	}
@@ -170,8 +180,8 @@ func convertStudentsRowsToDomain(rows pgx.Rows) ([]domain.Student, error) {
 	return students, nil
 }
 
-func (repo *StudentServiceImpl) isStudentExistsByEmail(ctx context.Context, email string) bool {
-	service := repo.repo
+func (studentService *StudentServiceImpl) IsStudentExistsByEmail(ctx context.Context, email string) bool {
+	service := studentService.studentRepository
 
 	if errors.Is(service.GetByEmail(ctx, email).Scan(), pgx.ErrNoRows) {
 		return false
@@ -180,8 +190,8 @@ func (repo *StudentServiceImpl) isStudentExistsByEmail(ctx context.Context, emai
 	return true
 }
 
-func (repo *StudentServiceImpl) isStudentExistsById(ctx context.Context, id int64) bool {
-	service := repo.repo
+func (studentService *StudentServiceImpl) IsStudentExistsById(ctx context.Context, id int64) bool {
+	service := studentService.studentRepository
 
 	if errors.Is(service.GetById(ctx, id).Scan(), pgx.ErrNoRows) {
 		return false

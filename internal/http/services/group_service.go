@@ -32,7 +32,7 @@ func (repo *GroupServiceImpl) Create(
 		GroupNumber: groupNumber,
 	}
 
-	if repo.isGroupExistsByNumber(ctx, groupNumber) {
+	if repo.IsGroupExistsByNumber(ctx, groupNumber) {
 		log.Println("group already exists")
 		return domain.Group{}, errors.New("group already exists")
 	}
@@ -90,7 +90,7 @@ func (repo *GroupServiceImpl) Update(ctx context.Context, id int64, groupNumber 
 		GroupNumber: groupNumber,
 	}
 
-	if !repo.isGroupExistsById(ctx, id) {
+	if !repo.IsGroupExistsById(ctx, id) {
 		log.Println("group doesn't exists")
 		return domain.Group{}, errors.New("group doesn't exists")
 	}
@@ -113,7 +113,7 @@ func (repo *GroupServiceImpl) Update(ctx context.Context, id int64, groupNumber 
 func (repo *GroupServiceImpl) DeleteById(ctx context.Context, id int64) error {
 	service := repo.repo
 
-	if !repo.isGroupExistsById(ctx, id) {
+	if !repo.IsGroupExistsById(ctx, id) {
 		log.Println("group doesn't exists")
 		return errors.New("group doesn't exist")
 	}
@@ -152,17 +152,19 @@ func convertGroupsRowsToDomain(rows pgx.Rows) ([]domain.Group, error) {
 	return groups, nil
 }
 
-func (repo *GroupServiceImpl) isGroupExistsByNumber(ctx context.Context, groupNumber string) bool {
+func (repo *GroupServiceImpl) IsGroupExistsByNumber(ctx context.Context, groupNumber string) bool {
 	service := repo.repo
 
-	if errors.Is(service.GetByGroupNumber(ctx, groupNumber).Scan(), pgx.ErrNoRows) {
+	err := service.GetByGroupNumber(ctx, groupNumber)
+
+	if errors.Is(err.Scan(), pgx.ErrNoRows) {
 		return false
 	}
 
 	return true
 }
 
-func (repo *GroupServiceImpl) isGroupExistsById(ctx context.Context, id int64) bool {
+func (repo *GroupServiceImpl) IsGroupExistsById(ctx context.Context, id int64) bool {
 	service := repo.repo
 
 	if errors.Is(service.GetById(ctx, id).Scan(), pgx.ErrNoRows) {

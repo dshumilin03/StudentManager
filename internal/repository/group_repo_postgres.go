@@ -23,7 +23,7 @@ func (repo *GroupRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 	database := repo.db
 
 	groups, err := database.Query(ctx,
-		"select * from group order by id")
+		"select * from \"group\" order by id")
 	if err != nil {
 		log.Printf("%s: query executement", err)
 		return nil, err
@@ -37,13 +37,13 @@ func (repo *GroupRepoPostgres) Create(ctx context.Context, group domain.Group) (
 	database := repo.db
 
 	_, err := database.Query(ctx,
-		"insert into group(group_number) values($1)",
+		"insert into \"group\"(group_number) values($1)",
 		group.GroupNumber)
 	if err != nil {
 		log.Printf("%s: query executement", err)
 		return nil, err
 	}
-	groupRows, err := database.Query(ctx, "select * from group where group_number = $1", group.GroupNumber)
+	groupRows, err := database.Query(ctx, "select * from \"group\" where group_number = $1", group.GroupNumber)
 
 	return groupRows, err
 }
@@ -51,7 +51,7 @@ func (repo *GroupRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row {
 	database := repo.db
 
 	group := database.QueryRow(ctx,
-		"select * from group where id = $1", id)
+		"select * from \"group\" where id = $1", id)
 
 	return group
 }
@@ -59,18 +59,18 @@ func (repo *GroupRepoPostgres) Update(ctx context.Context, group domain.Group) (
 	database := repo.db
 
 	_, err := database.Query(ctx,
-		"update group set group_number = $1", group.GroupNumber)
+		"update \"group\" set group_number = $1", group.GroupNumber)
 	if err != nil {
 		log.Printf("%s: query executement or group doesn't exists", err)
 		return nil, err
 	}
-	groupRows, err := database.Query(ctx, "select * from group where id = $1", group.Id)
+	groupRows, err := database.Query(ctx, "select * from \"group\" where id = $1", group.Id)
 
 	return groupRows, err
 }
 func (repo *GroupRepoPostgres) DeleteById(ctx context.Context, id int64) error {
 	database := repo.db
-	_, err := database.Exec(ctx, "delete from group where id = $1", id)
+	_, err := database.Exec(ctx, "delete from \"group\" where id = $1", id)
 	if err != nil {
 		fmt.Errorf("%s: query executement in deletion", err)
 		return err
@@ -82,7 +82,7 @@ func (repo *GroupRepoPostgres) GetByGroupNumber(ctx context.Context, groupNumber
 	database := repo.db
 
 	group := database.QueryRow(ctx,
-		"select * from group where group_number = $1", groupNumber)
+		"select * from \"group\" where group_number = $1", groupNumber)
 
 	return group
 }

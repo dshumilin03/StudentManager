@@ -21,7 +21,7 @@ func Run() {
 	}
 	repos := repository.NewRepositories(db)
 	// TODO provide just repos
-	services := services.NewServices(repos.Students, repos.Groups)
+	appServices := services.NewServices(repos.Students, repos.Groups)
 
 	r := chi.NewRouter()
 
@@ -31,7 +31,7 @@ func Run() {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/students", func(r chi.Router) {
-		studentService := services.Students
+		studentService := appServices.Students
 		r.Post("/", handlers.CreateStudent(studentService))
 		r.Get("/", handlers.GetAllStudents(studentService))
 
@@ -39,6 +39,23 @@ func Run() {
 			r.Get("/", handlers.GetStudentById(studentService)) //TODO add path variable
 			r.Delete("/", handlers.DeleteStudentById(studentService))
 			r.Put("/", handlers.UpdateStudent(studentService))
+		})
+	})
+
+	// Я закончил на добавлении групп надо потестить запросы к ним
+	/* 1) Доделать группы (проверить при создании студента есть ли группа в бд, также добавить проверку при апдейте студента
+	   2) Доделать все TODO
+	   3) По-хорошему написать тесты бы и функциональные и юнит
+	*/
+	r.Route("/groups", func(r chi.Router) {
+		groupService := appServices.Groups
+		r.Post("/", handlers.CreateGroup(groupService))
+		r.Get("/", handlers.GetAllGroups(groupService))
+
+		r.Route("/{Id}", func(r chi.Router) {
+			r.Get("/", handlers.GetGroupById(groupService)) //TODO add path variable
+			r.Delete("/", handlers.DeleteGroupById(groupService))
+			r.Put("/", handlers.UpdateGroup(groupService))
 		})
 	})
 

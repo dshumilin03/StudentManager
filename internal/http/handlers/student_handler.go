@@ -36,7 +36,7 @@ type GetStudentRequest struct {
 	FullName string `json:"full_name" env-required:"true"`
 }
 
-type Response struct {
+type StudentResponse struct {
 	resp.Response
 }
 
@@ -68,7 +68,7 @@ func CreateStudent(service services.StudentService) http.HandlerFunc {
 			student, err := service.Create(context.Background(), req.FullName, req.Age, req.GroupNumber, req.Email)
 			if err != nil {
 				if err.Error() == "student already exists" {
-					w.WriteHeader(http.StatusConflict)
+					w.WriteHeader(http.StatusBadRequest)
 					render.JSON(w, r, resp.Error("student already exists"))
 					return
 				}
@@ -80,7 +80,7 @@ func CreateStudent(service services.StudentService) http.HandlerFunc {
 			}
 			log.Println("student added", slog.Any("response", req))
 
-			responseCreated(w, r, student)
+			responseStudentCreated(w, r, student)
 		} else {
 			log.Println("invalid request")
 			w.WriteHeader(http.StatusBadRequest)
@@ -185,7 +185,7 @@ func UpdateStudent(service services.StudentService) http.HandlerFunc {
 
 		log.Println("student updated", slog.Any("response", req))
 
-		responseUpdated(w, r, student)
+		responseStudentUpdated(w, r, student)
 	}
 }
 
@@ -235,35 +235,35 @@ func DeleteStudentById(service services.StudentService) http.HandlerFunc {
 	}
 }
 
-// TODO rewrite that responses into structs Response
+// TODO rewrite that responses into structs GroupResponse
 func responseOK(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, http.StatusOK)
 }
 
 func responseFoundStudents(w http.ResponseWriter, r *http.Request, students []domain.Student) {
-	w.WriteHeader(http.StatusFound)
-	render.JSON(w, r, Response{
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, StudentResponse{
 		Response: resp.FoundAllStudents(students),
 	})
 }
 
 func responseFoundStudent(w http.ResponseWriter, r *http.Request, student domain.Student) {
-	w.WriteHeader(http.StatusFound)
-	render.JSON(w, r, Response{
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, StudentResponse{
 		Response: resp.FoundStudent(student),
 	})
 }
 
-func responseCreated(w http.ResponseWriter, r *http.Request, student domain.Student) {
+func responseStudentCreated(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusCreated)
-	render.JSON(w, r, Response{
-		Response: resp.Created(student),
+	render.JSON(w, r, StudentResponse{
+		Response: resp.StudentCreated(student),
 	})
 }
 
-func responseUpdated(w http.ResponseWriter, r *http.Request, student domain.Student) {
+func responseStudentUpdated(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, Response{
-		Response: resp.Updated(student),
+	render.JSON(w, r, StudentResponse{
+		Response: resp.StudentUpdated(student),
 	})
 }
