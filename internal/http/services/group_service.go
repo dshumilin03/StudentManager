@@ -2,6 +2,7 @@ package services
 
 import (
 	"StudentManager/internal/domain"
+	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
 	"context"
 	"errors"
@@ -25,14 +26,14 @@ func NewGroupServiceImpl(repo repository.GroupRepository) *GroupServiceImpl {
 }
 
 func (repo *GroupServiceImpl) Create(
-	ctx context.Context, groupNumber string) (domain.Group, error) {
+	ctx context.Context, groupDto dto.GroupDto) (domain.Group, error) {
 	service := repo.repo
 
 	group := domain.Group{
-		GroupNumber: groupNumber,
+		GroupNumber: groupDto.GroupNumber,
 	}
 
-	if repo.IsGroupExistsByNumber(ctx, groupNumber) {
+	if repo.IsGroupExistsByNumber(ctx, group.GroupNumber) {
 		log.Println("group already exists")
 		return domain.Group{}, errors.New("group already exists")
 	}
@@ -82,15 +83,16 @@ func (repo *GroupServiceImpl) GetById(ctx context.Context, id int64) (domain.Gro
 	return group, nil
 }
 
-func (repo *GroupServiceImpl) Update(ctx context.Context, id int64, groupNumber string) (domain.Group, error) {
+func (repo *GroupServiceImpl) Update(ctx context.Context,
+	groupDto dto.GroupDto) (domain.Group, error) {
 	service := repo.repo
 
 	group := domain.Group{
-		Id:          id,
-		GroupNumber: groupNumber,
+		Id:          groupDto.Id,
+		GroupNumber: groupDto.GroupNumber,
 	}
 
-	if !repo.IsGroupExistsById(ctx, id) {
+	if !repo.IsGroupExistsById(ctx, group.Id) {
 		log.Println("group doesn't exists")
 		return domain.Group{}, errors.New("group doesn't exists")
 	}

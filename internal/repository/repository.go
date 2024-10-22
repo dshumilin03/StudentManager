@@ -8,7 +8,6 @@ import (
 	"log"
 )
 
-// TODO make all repositories private
 type StudentRepository interface {
 	Create(ctx context.Context, student domain.Student) (pgx.Rows, error)
 	GetById(ctx context.Context, id int64) pgx.Row

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"StudentManager/internal/domain"
+	"StudentManager/internal/dto"
 	resp "StudentManager/internal/http/response"
 	"StudentManager/internal/http/services"
 	"context"
@@ -28,16 +29,12 @@ type UpdateStudentRequest struct {
 	Email       string `json:"email" env-required:"true"`
 }
 
-type StudentIdRequst struct {
+type StudentIdRequest struct {
 	Id int64 `json:"id" env-required:"true"`
 }
 
 type GetStudentRequest struct {
 	FullName string `json:"full_name" env-required:"true"`
-}
-
-type StudentResponse struct {
-	resp.Response
 }
 
 func CreateStudent(service services.StudentService) http.HandlerFunc {
@@ -49,7 +46,7 @@ func CreateStudent(service services.StudentService) http.HandlerFunc {
 		if errors.Is(err, io.EOF) {
 
 			log.Println("request body is empty")
-
+			// TODO response error like in groups
 			render.JSON(w, r, resp.Error("empty request"))
 
 			return
@@ -65,7 +62,15 @@ func CreateStudent(service services.StudentService) http.HandlerFunc {
 		log.Println("request body decoded", slog.Any("response", req))
 
 		if req.Age != 0 && req.Email != "" && req.FullName != "" && req.GroupNumber != "" {
-			student, err := service.Create(context.Background(), req.FullName, req.Age, req.GroupNumber, req.Email)
+
+			studentDto := dto.StudentDto{
+				FullName:    req.FullName,
+				Age:         req.Age,
+				GroupNumber: req.GroupNumber,
+				Email:       req.Email,
+			}
+
+			student, err := service.Create(context.Background(), studentDto)
 			if err != nil {
 				if err.Error() == "student already exists" {
 					w.WriteHeader(http.StatusBadRequest)
@@ -109,7 +114,7 @@ func GetAllStudents(service services.StudentService) http.HandlerFunc {
 func GetStudentById(service services.StudentService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var req StudentIdRequst
+		var req StudentIdRequest
 
 		err := render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
@@ -168,7 +173,15 @@ func UpdateStudent(service services.StudentService) http.HandlerFunc {
 
 		log.Println("request body decoded", slog.Any("response", req))
 
-		student, err := service.Update(context.Background(), req.Id, req.FullName, req.Age, req.GroupNumber, req.Email)
+		studentDto := dto.StudentDto{
+			Id:          req.Id,
+			FullName:    req.FullName,
+			Age:         req.Age,
+			GroupNumber: req.GroupNumber,
+			Email:       req.Email,
+		}
+
+		student, err := service.Update(context.Background(), studentDto)
 
 		if err != nil {
 			if err.Error() == "student doesn't exists" {
@@ -192,7 +205,7 @@ func UpdateStudent(service services.StudentService) http.HandlerFunc {
 func DeleteStudentById(service services.StudentService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var req StudentIdRequst
+		var req StudentIdRequest
 
 		err := render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
@@ -235,35 +248,22 @@ func DeleteStudentById(service services.StudentService) http.HandlerFunc {
 	}
 }
 
-// TODO rewrite that responses into structs GroupResponse
-func responseOK(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, http.StatusOK)
-}
-
 func responseFoundStudents(w http.ResponseWriter, r *http.Request, students []domain.Student) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, StudentResponse{
-		Response: resp.FoundAllStudents(students),
-	})
+	render.JSON(w, r, resp.StudentsResponse(students))
 }
 
 func responseFoundStudent(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, StudentResponse{
-		Response: resp.FoundStudent(student),
-	})
+	render.JSON(w, r, resp.StudentResponse(student))
 }
 
 func responseStudentCreated(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusCreated)
-	render.JSON(w, r, StudentResponse{
-		Response: resp.StudentCreated(student),
-	})
+	render.JSON(w, r, resp.StudentResponse(student))
 }
 
 func responseStudentUpdated(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, StudentResponse{
-		Response: resp.StudentUpdated(student),
-	})
+	render.JSON(w, r, resp.StudentResponse(student))
 }

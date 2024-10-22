@@ -2,6 +2,7 @@ package services
 
 import (
 	"StudentManager/internal/domain"
+	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
 	"context"
 	"errors"
@@ -28,28 +29,23 @@ func NewStudentServiceImpl(repo repository.StudentRepository, service GroupServi
 
 func (studentService *StudentServiceImpl) Create(
 	ctx context.Context,
-	fullName string,
-	age int,
-	groupNumber string,
-	email string,
+	dto dto.StudentDto,
 ) (domain.Student, error) {
-
 	repo := studentService.studentRepository
 	groupService := studentService.groupService
 
 	student := domain.Student{
-		FullName:    fullName,
-		Age:         age,
-		GroupNumber: groupNumber,
-		Email:       email,
+		FullName:    dto.FullName,
+		Age:         dto.Age,
+		GroupNumber: dto.GroupNumber,
+		Email:       dto.Email,
 	}
-
-	if studentService.IsStudentExistsByEmail(ctx, email) {
+	if studentService.IsStudentExistsByEmail(ctx, student.Email) {
 		log.Println("student already exists")
 		return domain.Student{}, errors.New("student already exists")
 	}
 
-	if !groupService.IsGroupExistsByNumber(ctx, groupNumber) {
+	if !groupService.IsGroupExistsByNumber(ctx, student.GroupNumber) {
 		log.Println("group doesn't exist")
 		return domain.Student{}, errors.New("group doesn't exist")
 	}
@@ -100,25 +96,19 @@ func (studentService *StudentServiceImpl) GetById(ctx context.Context, id int64)
 	return students, nil
 }
 
-func (studentService *StudentServiceImpl) Update(
-	ctx context.Context,
-	id int64,
-	fullName string,
-	age int,
-	groupNumber string,
-	email string,
-) (domain.Student, error) {
+func (studentService *StudentServiceImpl) Update(ctx context.Context,
+	studentDto dto.StudentDto) (domain.Student, error) {
 	repo := studentService.studentRepository
 
 	student := domain.Student{
-		Id:          id,
-		FullName:    fullName,
-		Age:         age,
-		GroupNumber: groupNumber,
-		Email:       email,
+		Id:          studentDto.Id,
+		FullName:    studentDto.FullName,
+		Age:         studentDto.Age,
+		GroupNumber: studentDto.GroupNumber,
+		Email:       studentDto.Email,
 	}
 
-	if !studentService.IsStudentExistsById(ctx, id) {
+	if !studentService.IsStudentExistsById(ctx, student.Id) {
 		log.Println("student doesn't exists")
 		return domain.Student{}, errors.New("student doesn't exists")
 	}

@@ -20,8 +20,7 @@ func Run() {
 		return
 	}
 	repos := repository.NewRepositories(db)
-	// TODO provide just repos
-	appServices := services.NewServices(repos.Students, repos.Groups)
+	appServices := services.NewServices(repos)
 
 	r := chi.NewRouter()
 

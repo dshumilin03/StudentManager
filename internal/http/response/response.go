@@ -12,51 +12,25 @@ type Response struct {
 	Group    *domain.Group    `json:"group,omitempty"`
 }
 
-func FoundAllStudents(students []domain.Student) Response {
+func StudentResponse(student domain.Student) Response {
+	return Response{
+		Student: &student,
+	}
+}
+
+func StudentsResponse(students []domain.Student) Response {
 	return Response{
 		Students: students,
 	}
 }
 
-func FoundAllGroups(groups []domain.Group) Response {
+func GroupsResponse(groups []domain.Group) Response {
 	return Response{
 		Groups: groups,
 	}
 }
 
-// TODO Reason to get all to one response with student?
-func FoundStudent(student domain.Student) Response {
-	return Response{
-		Student: &student,
-	}
-}
-
-func FoundGroup(group domain.Group) Response {
-	return Response{
-		Group: &group,
-	}
-}
-
-// TODO make it abstract
-func StudentCreated(student domain.Student) Response {
-	return Response{
-		Student: &student,
-	}
-}
-
-func CreatedGroup(group domain.Group) Response {
-	return Response{
-		Group: &group,
-	}
-}
-
-func StudentUpdated(student domain.Student) Response {
-	return Response{
-		Student: &student,
-	}
-}
-
-func UpdatedGroup(group domain.Group) Response {
+func GroupResponse(group domain.Group) Response {
 	return Response{
 		Group: &group,
 	}

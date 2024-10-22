@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"StudentManager/internal/domain"
+	"StudentManager/internal/dto"
 	resp "StudentManager/internal/http/response"
 	"StudentManager/internal/http/services"
 	"context"
@@ -31,10 +32,6 @@ type GetGroupRequest struct {
 	GroupNumber string `json:"group_number" env-required:"true"`
 }
 
-type GroupResponse struct {
-	resp.Response
-}
-
 func CreateGroup(service services.GroupService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -42,36 +39,37 @@ func CreateGroup(service services.GroupService) http.HandlerFunc {
 
 		err := render.DecodeJSON(r.Body, &req)
 		if errors.Is(err, io.EOF) {
-
 			log.Println("request body is empty")
 
-			render.JSON(w, r, resp.Error("empty request"))
-
+			responseError(w, r, "empty request", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			log.Printf("failed to decode request body %v", err)
 
-			render.JSON(w, r, resp.Error("failed to decode request"))
-
+			responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
 
 		log.Println("request body decoded", slog.Any("response", req))
 
 		if req.GroupNumber != "" {
-			group, err := service.Create(context.Background(), req.GroupNumber)
+
+			groupDto := dto.GroupDto{
+				GroupNumber: req.GroupNumber,
+			}
+
+			group, err := service.Create(context.Background(), groupDto)
 			if err != nil {
 				if err.Error() == "group already exists" {
-					w.WriteHeader(http.StatusBadRequest)
-					render.JSON(w, r, resp.Error("group already exists"))
+					responseError(w, r, "group already exists", http.StatusBadRequest)
 					return
 				}
 
 				// TODO disable double notification from service and handler
 				log.Printf("failed to create group %v", err)
 
-				render.JSON(w, r, resp.Error("failed to create group"))
+				responseError(w, r, "failed to create group", http.StatusInternalServerError)
 				return
 			}
 			log.Println("group added", slog.Any("response", req))
@@ -80,8 +78,8 @@ func CreateGroup(service services.GroupService) http.HandlerFunc {
 
 		} else {
 			log.Println("invalid request")
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, resp.Error("invalid request"))
+			responseError(w, r, "invalid request", http.StatusBadRequest)
+			return
 		}
 	}
 }
@@ -93,7 +91,7 @@ func GetAllGroups(service services.GroupService) http.HandlerFunc {
 		if err != nil {
 			log.Printf("failed to get groups %v", err)
 
-			render.JSON(w, r, resp.Error("failed to get groups"))
+			responseError(w, r, "failed to get groups", http.StatusInternalServerError)
 			return
 		}
 
@@ -113,15 +111,13 @@ func GetGroupById(service services.GroupService) http.HandlerFunc {
 
 			log.Println("request body is empty")
 
-			render.JSON(w, r, resp.Error("empty request"))
-
+			responseError(w, r, "empty request", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			log.Printf("failed to decode request body %v", err)
 
-			render.JSON(w, r, resp.Error("failed to decode request"))
-
+			responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
 
@@ -131,7 +127,7 @@ func GetGroupById(service services.GroupService) http.HandlerFunc {
 		if err != nil {
 			log.Printf("failed to get group %v", err)
 
-			render.JSON(w, r, resp.Error("failed to get group"))
+			responseError(w, r, "failed to get group", http.StatusNotFound)
 			return
 		}
 
@@ -151,32 +147,34 @@ func UpdateGroup(service services.GroupService) http.HandlerFunc {
 
 			log.Println("request body is empty")
 
-			render.JSON(w, r, resp.Error("empty request"))
-
+			responseError(w, r, "empty request", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			log.Printf("failed to decode request body %v", err)
 
-			render.JSON(w, r, resp.Error("failed to decode request"))
-
+			responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
 
 		log.Println("request body decoded", slog.Any("response", req))
 
-		group, err := service.Update(context.Background(), req.Id, req.GroupNumber)
+		groupDto := dto.GroupDto{
+			Id:          req.Id,
+			GroupNumber: req.GroupNumber,
+		}
+
+		group, err := service.Update(context.Background(), groupDto)
 
 		if err != nil {
 			if err.Error() == "group doesn't exists" {
-				w.WriteHeader(http.StatusNotFound)
-				render.JSON(w, r, resp.Error("group doesn't exists"))
+				responseError(w, r, "group doesn't exists", http.StatusNotFound)
 				return
 			}
 
 			log.Printf("failed to update group %v", err)
 
-			render.JSON(w, r, resp.Error("failed to update group"))
+			responseError(w, r, "failed to update group", http.StatusInternalServerError)
 			return
 		}
 
@@ -196,14 +194,13 @@ func DeleteGroupById(service services.GroupService) http.HandlerFunc {
 
 			log.Println("request body is empty")
 
-			render.JSON(w, r, resp.Error("empty request"))
-
+			responseError(w, r, "empty request", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			log.Printf("failed to decode request body %v", err)
 
-			render.JSON(w, r, resp.Error("failed to decode request"))
+			responseError(w, r, "failed to decode request", http.StatusBadRequest)
 
 			return
 		}
@@ -217,13 +214,13 @@ func DeleteGroupById(service services.GroupService) http.HandlerFunc {
 			if err.Error() == "group does not exist" {
 				w.WriteHeader(http.StatusNotFound)
 				// TODO write instead of word group or student, domain
-				render.JSON(w, r, resp.Error("group does not exist"))
+				responseError(w, r, "group doesn't exists", http.StatusNotFound)
 				return
 			}
 
 			log.Printf("failed to delete group %v", err)
 
-			render.JSON(w, r, resp.Error("failed to delete group"))
+			responseError(w, r, "failed to delete group", http.StatusInternalServerError)
 			return
 		}
 
@@ -235,28 +232,25 @@ func DeleteGroupById(service services.GroupService) http.HandlerFunc {
 
 func responseFoundGroups(w http.ResponseWriter, r *http.Request, groups []domain.Group) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, GroupResponse{
-		Response: resp.FoundAllGroups(groups),
-	})
+	render.JSON(w, r, resp.GroupsResponse(groups))
 }
 
 func responseFoundGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, GroupResponse{
-		Response: resp.FoundGroup(group),
-	})
+	render.JSON(w, r, resp.GroupResponse(group))
 }
 
 func responseCreatedGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
 	w.WriteHeader(http.StatusCreated)
-	render.JSON(w, r, GroupResponse{
-		Response: resp.CreatedGroup(group),
-	})
+	render.JSON(w, r, resp.GroupResponse(group))
 }
 
 func responseUpdatedGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, GroupResponse{
-		Response: resp.UpdatedGroup(group),
-	})
+	render.JSON(w, r, resp.GroupResponse(group))
+}
+
+func responseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
+	w.WriteHeader(status)
+	render.JSON(w, r, resp.Error(msg))
 }
