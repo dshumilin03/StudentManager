@@ -1,10 +1,11 @@
-package services
+package service
 
 import (
 	"StudentManager/internal/domain"
 	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4"
@@ -62,6 +63,7 @@ func (studentService *StudentServiceImpl) Create(
 		return domain.Student{}, err
 	}
 
+	log.Printf("created student: %v", student)
 	return createdStudent[0], err
 }
 
@@ -71,6 +73,7 @@ func (studentService *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.
 	rows, err := service.GetAll(ctx)
 	if err != nil {
 		log.Printf("failed to get students %v", err)
+		return []domain.Student{}, err
 	}
 
 	students, err := convertStudentsRowsToDomain(rows)
@@ -79,6 +82,7 @@ func (studentService *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.
 
 	}
 
+	log.Println("received all students")
 	return students, nil
 }
 
@@ -87,12 +91,17 @@ func (studentService *StudentServiceImpl) GetById(ctx context.Context, id int64)
 
 	row := service.GetById(ctx, id)
 
+	if errors.Is(row.Scan(), sql.ErrNoRows) {
+		log.Println("student doesn't exist")
+		return domain.Student{}, errors.New("student doesn't exist")
+	}
+
 	students, err := convertStudentRowToDomain(row)
 	if err != nil {
 		log.Printf("failed to convert students into domain %v", err)
-
 	}
 
+	log.Printf("received student by id: %v", students)
 	return students, nil
 }
 
@@ -125,6 +134,7 @@ func (studentService *StudentServiceImpl) Update(ctx context.Context,
 		return domain.Student{}, err
 	}
 
+	log.Printf("student updated: %v", updatedStudent)
 	return updatedStudent[0], err
 }
 
@@ -132,7 +142,7 @@ func (studentService *StudentServiceImpl) DeleteById(ctx context.Context, id int
 	repo := studentService.studentRepository
 
 	if !studentService.IsStudentExistsById(ctx, id) {
-		log.Println("student doesn't exists")
+		log.Println("student doesn't exist")
 		return errors.New("student does not exist")
 	}
 	err := repo.DeleteById(ctx, id)
@@ -140,6 +150,7 @@ func (studentService *StudentServiceImpl) DeleteById(ctx context.Context, id int
 		log.Printf("failed to delete student %v", err)
 	}
 
+	log.Printf("student deleted with id: %v", id)
 	return nil
 }
 
@@ -152,6 +163,7 @@ func convertStudentRowToDomain(row pgx.Row) (domain.Student, error) {
 		return domain.Student{}, err
 	}
 
+	log.Println("successfully converted student row to domain")
 	return student, err
 }
 
@@ -167,6 +179,7 @@ func convertStudentsRowsToDomain(rows pgx.Rows) ([]domain.Student, error) {
 		students = append(students, r)
 	}
 
+	log.Println("successfully converted students rows to domain")
 	return students, nil
 }
 

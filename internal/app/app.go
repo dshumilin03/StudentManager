@@ -2,8 +2,8 @@ package app
 
 import (
 	"StudentManager/internal/config"
-	"StudentManager/internal/http/handlers"
-	"StudentManager/internal/http/services"
+	"StudentManager/internal/http/handler"
+	"StudentManager/internal/http/service"
 	"StudentManager/internal/repository"
 	"StudentManager/pkg/database/postgres"
 	"github.com/go-chi/chi/v5"
@@ -20,45 +20,23 @@ func Run() {
 		return
 	}
 	repos := repository.NewRepositories(db)
-	appServices := services.NewServices(repos)
+	appServices := service.NewServices(repos)
+	handlers := handler.NewHandlers(appServices)
 
 	r := chi.NewRouter()
-
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Route("/students", func(r chi.Router) {
-		studentService := appServices.Students
-		r.Post("/", handlers.CreateStudent(studentService))
-		r.Get("/", handlers.GetAllStudents(studentService))
-
-		r.Route("/{Id}", func(r chi.Router) {
-			r.Get("/", handlers.GetStudentById(studentService)) //TODO add path variable
-			r.Delete("/", handlers.DeleteStudentById(studentService))
-			r.Put("/", handlers.UpdateStudent(studentService))
-		})
-	})
+	handlers.InitRoutes(r)
 
 	// Я закончил на добавлении групп надо потестить запросы к ним
 	/* 1) Доделать группы (проверить при создании студента есть ли группа в бд, также добавить проверку при апдейте студента
 	   2) Доделать все TODO
 	   3) По-хорошему написать тесты бы и функциональные и юнит
 	*/
-	r.Route("/groups", func(r chi.Router) {
-		groupService := appServices.Groups
-		r.Post("/", handlers.CreateGroup(groupService))
-		r.Get("/", handlers.GetAllGroups(groupService))
 
-		r.Route("/{Id}", func(r chi.Router) {
-			r.Get("/", handlers.GetGroupById(groupService)) //TODO add path variable
-			r.Delete("/", handlers.DeleteGroupById(groupService))
-			r.Put("/", handlers.UpdateGroup(groupService))
-		})
-	})
-
-	log.Println("Listening on server address " + cfg.Address)
 	srv := &http.Server{
 		Addr:         cfg.Address,
 		Handler:      r,
@@ -66,6 +44,7 @@ func Run() {
 		WriteTimeout: cfg.HTTPServer.Timeout,
 		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
 	}
+	log.Println("Listening on server address " + cfg.Address)
 
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("failed to start server")
