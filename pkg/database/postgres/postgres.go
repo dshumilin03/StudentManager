@@ -2,26 +2,14 @@ package postgres
 
 import (
 	"StudentManager/internal/config"
-	"database/sql"
+	"context"
 	"fmt"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 )
 
-type Storage struct {
-	db *sql.DB
-}
-
-type Database struct {
-	Username string
-	Password string
-	Host     string
-	Port     string
-	Dbname   string
-	Sslmode  string
-}
-
-func New(database config.Database) (*Storage, error) {
+func New(database config.Database) (*pgxpool.Pool, error) {
 
 	// Формирование строки подключения
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
@@ -32,19 +20,23 @@ func New(database config.Database) (*Storage, error) {
 		database.Dbname,
 		database.Sslmode)
 
-	db, err := sql.Open("postgres", connStr)
-	// Подключение к базе данных
+	_, err := pgx.ParseConfig(connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client, err := pgxpool.Connect(context.Background(), connStr)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 		return nil, err
 	}
 
 	// Проверка соединения
-	if err := db.Ping(); err != nil {
+	if err := client.Ping(context.Background()); err != nil {
 		log.Fatalf("error: %v", err)
 		return nil, err
 	}
 
 	log.Println("Successfully connected to the database!")
-	return &Storage{db: db}, nil
+	return client, nil
 }
