@@ -6,7 +6,6 @@ import (
 	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4"
@@ -70,6 +69,7 @@ func (repo *GroupServiceImpl) GetAll(ctx context.Context) ([]domain.Group, error
 	if err != nil {
 		log.Printf("failed to convert groups into domain %v", err)
 
+		return []domain.Group{}, err
 	}
 
 	log.Println("received all groups")
@@ -81,15 +81,17 @@ func (repo *GroupServiceImpl) GetById(ctx context.Context, id int64) (domain.Gro
 	service := repo.repo
 
 	row := service.GetById(ctx, id)
-	if errors.Is(row.Scan(), sql.ErrNoRows) {
-		log.Printf("group does not exist")
-		return domain.Group{}, custom_errors.ErrGroupNotFound
-	}
 
 	group, err := convertGroupRowToDomain(row)
-	if err != nil {
-		log.Printf("failed to convert group into domain %v", err)
 
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("group does not exist")
+			return domain.Group{}, custom_errors.ErrGroupNotFound
+		}
+
+		log.Printf("failed to convert group into domain %v", err)
+		return domain.Group{}, err
 	}
 
 	log.Printf("received group by id: %v", group)
@@ -139,6 +141,8 @@ func (repo *GroupServiceImpl) DeleteById(ctx context.Context, id int64) error {
 	err := service.DeleteById(ctx, id)
 	if err != nil {
 		log.Printf("failed to delete group %v", err)
+
+		return err
 	}
 
 	log.Printf("deleted group with id: %v", id)

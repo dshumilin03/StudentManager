@@ -46,8 +46,10 @@ func (h *Handlers) InitRoutes(r chi.Router) {
 		r.Post("/", studentHandler.Create())
 		r.Get("/", studentHandler.GetAll())
 
-		r.Route("/{Id}", func(r chi.Router) {
-			r.Get("/", studentHandler.GetById()) //TODO add path variable
+		r.Route("/{id}", func(r chi.Router) {
+			rctx := chi.NewRouteContext()
+			rctx.URLParam("id")
+			r.Get("/", studentHandler.GetById())
 			r.Delete("/", studentHandler.DeleteById())
 			r.Put("/", studentHandler.Update())
 		})
@@ -58,8 +60,10 @@ func (h *Handlers) InitRoutes(r chi.Router) {
 		r.Post("/", groupHandler.Create())
 		r.Get("/", groupHandler.GetAll())
 
-		r.Route("/{Id}", func(r chi.Router) {
-			r.Get("/", groupHandler.GetById()) //TODO add path variable
+		r.Route("/{id}", func(r chi.Router) {
+			rctx := chi.NewRouteContext()
+			rctx.URLParam("id")
+			r.Get("/", groupHandler.GetById())
 			r.Delete("/", groupHandler.DeleteById())
 			r.Put("/", groupHandler.Update())
 		})

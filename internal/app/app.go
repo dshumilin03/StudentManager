@@ -31,11 +31,6 @@ func Run() {
 
 	handlers.InitRoutes(r)
 
-	/*
-	   2) Доделать все TODO
-	   3) По-хорошему написать тесты бы и функциональные и юнит
-	*/
-
 	srv := &http.Server{
 		Addr:         cfg.Address,
 		Handler:      r,

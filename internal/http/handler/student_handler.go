@@ -6,12 +6,12 @@ import (
 	"StudentManager/internal/dto"
 	resp "StudentManager/internal/http/response"
 	"StudentManager/internal/http/service"
-	"context"
 	"errors"
 	"github.com/go-chi/render"
 	"log"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 type CreateStudentRequest struct {
@@ -52,7 +52,7 @@ func (h *StudentHandlerImpl) Create() http.HandlerFunc {
 		var req CreateStudentRequest
 
 		d := JsonDecoder[CreateStudentRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		req, err := d.Decode(w, r, req, h)
 		if err != nil {
 			return
 		}
@@ -71,9 +71,9 @@ func (h *StudentHandlerImpl) Create() http.HandlerFunc {
 			Email:       req.Email,
 		}
 
-		student, err := studentService.Create(context.Background(), studentDto)
+		student, err := studentService.Create(r.Context(), studentDto)
 		if err != nil {
-			if errors.Is(err, custom_errors.ErrStudentExists) || errors.Is(err, custom_errors.ErrGroupExists) {
+			if errors.Is(err, custom_errors.ErrStudentExists) || errors.Is(err, custom_errors.ErrGroupNotFound) {
 				h.ResponseError(w, r, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -90,7 +90,7 @@ func (h *StudentHandlerImpl) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
 
-		students, err := studentService.GetAll(context.Background())
+		students, err := studentService.GetAll(r.Context())
 		if err != nil {
 
 			h.ResponseError(w, r, "failed to get student", http.StatusNotFound)
@@ -105,18 +105,17 @@ func (h *StudentHandlerImpl) GetById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
 
-		var req StudentIdRequest
-
-		d := JsonDecoder[StudentIdRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		id, err := h.getIdFromRequest(r)
 		if err != nil {
+			h.ResponseError(w, r, "invalid request", http.StatusBadRequest)
 			return
 		}
 
-		student, err := studentService.GetById(context.Background(), req.Id)
+		student, err := studentService.GetById(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, custom_errors.ErrStudentNotFound) {
 				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
+				return
 			}
 
 			h.ResponseError(w, r, "failed to get student", http.StatusNotFound)
@@ -134,7 +133,7 @@ func (h *StudentHandlerImpl) Update() http.HandlerFunc {
 		var req UpdateStudentRequest
 
 		d := JsonDecoder[UpdateStudentRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		req, err := d.Decode(w, r, req, h)
 		if err != nil {
 			return
 		}
@@ -149,7 +148,7 @@ func (h *StudentHandlerImpl) Update() http.HandlerFunc {
 			Email:       req.Email,
 		}
 
-		student, err := studentService.Update(context.Background(), studentDto)
+		student, err := studentService.Update(r.Context(), studentDto)
 
 		if err != nil {
 			if errors.Is(err, custom_errors.ErrStudentNotFound) {
@@ -168,15 +167,14 @@ func (h *StudentHandlerImpl) Update() http.HandlerFunc {
 func (h *StudentHandlerImpl) DeleteById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
-		var req StudentIdRequest
 
-		d := JsonDecoder[StudentIdRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		id, err := h.getIdFromRequest(r)
 		if err != nil {
+			h.ResponseError(w, r, "invalid request", http.StatusBadRequest)
 			return
 		}
 
-		err = studentService.DeleteById(context.Background(), req.Id)
+		err = studentService.DeleteById(r.Context(), id)
 		if err != nil {
 
 			if errors.Is(err, custom_errors.ErrStudentNotFound) {
@@ -216,4 +214,12 @@ func (h *StudentHandlerImpl) responseStudentUpdated(w http.ResponseWriter, r *ht
 func (h *StudentHandlerImpl) ResponseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
 	w.WriteHeader(status)
 	render.JSON(w, r, resp.Error(msg))
+
+}
+
+func (h *StudentHandlerImpl) getIdFromRequest(r *http.Request) (int64, error) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+
+	return id, err
 }

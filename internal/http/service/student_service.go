@@ -6,7 +6,6 @@ import (
 	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4"
@@ -80,7 +79,7 @@ func (studentService *StudentServiceImpl) GetAll(ctx context.Context) ([]domain.
 	students, err := convertStudentsRowsToDomain(rows)
 	if err != nil {
 		log.Printf("failed to convert students into domain %v", err)
-
+		return []domain.Student{}, err
 	}
 
 	log.Println("received all students")
@@ -92,18 +91,21 @@ func (studentService *StudentServiceImpl) GetById(ctx context.Context, id int64)
 
 	row := service.GetById(ctx, id)
 
-	if errors.Is(row.Scan(), sql.ErrNoRows) {
-		log.Println("student does not exist")
-		return domain.Student{}, custom_errors.ErrStudentNotFound
-	}
+	student, err := convertStudentRowToDomain(row)
 
-	students, err := convertStudentRowToDomain(row)
 	if err != nil {
-		log.Printf("failed to convert students into domain %v", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Println("student does not exist")
+			return domain.Student{}, custom_errors.ErrStudentNotFound
+		}
+
+		log.Printf("failed to convert student into domain %v", err)
+		return domain.Student{}, err
 	}
 
-	log.Printf("received student by id: %v", students)
-	return students, nil
+	log.Printf("received student by id: %v", student)
+
+	return student, nil
 }
 
 func (studentService *StudentServiceImpl) Update(ctx context.Context,
@@ -149,13 +151,15 @@ func (studentService *StudentServiceImpl) DeleteById(ctx context.Context, id int
 	repo := studentService.studentRepository
 
 	if !studentService.IsStudentExistsById(ctx, id) {
-		log.Println("student does not exist")
 
+		log.Println("student does not exist")
 		return custom_errors.ErrStudentNotFound
 	}
 	err := repo.DeleteById(ctx, id)
 	if err != nil {
+
 		log.Printf("failed to delete student %v", err)
+		return err
 	}
 
 	log.Printf("student deleted with id: %v", id)

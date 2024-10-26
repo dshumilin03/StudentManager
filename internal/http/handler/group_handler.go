@@ -6,11 +6,11 @@ import (
 	"StudentManager/internal/dto"
 	resp "StudentManager/internal/http/response"
 	"StudentManager/internal/http/service"
-	"context"
 	"errors"
 	"github.com/go-chi/render"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type CreateGroupRequest struct {
@@ -46,7 +46,7 @@ func (h *GroupHandlerImpl) Create() http.HandlerFunc {
 		var req CreateGroupRequest
 
 		d := JsonDecoder[CreateGroupRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		req, err := d.Decode(w, r, req, h)
 		if err != nil {
 			return
 		}
@@ -57,7 +57,7 @@ func (h *GroupHandlerImpl) Create() http.HandlerFunc {
 				GroupNumber: req.GroupNumber,
 			}
 
-			group, err := groupService.Create(context.Background(), groupDto)
+			group, err := groupService.Create(r.Context(), groupDto)
 			if err != nil {
 				if errors.Is(err, custom_errors.ErrGroupExists) {
 
@@ -84,7 +84,7 @@ func (h *GroupHandlerImpl) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 
-		groups, err := groupService.GetAll(context.Background())
+		groups, err := groupService.GetAll(r.Context())
 		if err != nil {
 
 			h.ResponseError(w, r, "failed to get groups", http.StatusInternalServerError)
@@ -99,18 +99,18 @@ func (h *GroupHandlerImpl) GetById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 
-		var req GroupIdRequest
-
-		d := JsonDecoder[GroupIdRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		id, err := h.getIdFromRequest(r)
 		if err != nil {
+			h.ResponseError(w, r, "invalid request", http.StatusBadRequest)
 			return
 		}
 
-		group, err := groupService.GetById(context.Background(), req.Id)
+		group, err := groupService.GetById(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, custom_errors.ErrGroupNotFound) {
 				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
+
+				return
 			}
 
 			h.ResponseError(w, r, "failed to get group", http.StatusNotFound)
@@ -124,11 +124,11 @@ func (h *GroupHandlerImpl) GetById() http.HandlerFunc {
 func (h *GroupHandlerImpl) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
-		// TODO write json decoder struct
+
 		var req UpdateGroupRequest
 
 		d := JsonDecoder[UpdateGroupRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		req, err := d.Decode(w, r, req, h)
 		if err != nil {
 			return
 		}
@@ -138,7 +138,7 @@ func (h *GroupHandlerImpl) Update() http.HandlerFunc {
 			GroupNumber: req.GroupNumber,
 		}
 
-		group, err := groupService.Update(context.Background(), groupDto)
+		group, err := groupService.Update(r.Context(), groupDto)
 
 		if err != nil {
 			if errors.Is(err, custom_errors.ErrGroupNotFound) {
@@ -158,15 +158,13 @@ func (h *GroupHandlerImpl) DeleteById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 
-		var req GroupIdRequest
-
-		d := JsonDecoder[GroupIdRequest, dto.GroupDto, domain.Group]{}
-		err := d.Decode(w, r, req, h)
+		id, err := h.getIdFromRequest(r)
 		if err != nil {
+			h.ResponseError(w, r, "invalid request", http.StatusBadRequest)
 			return
 		}
 
-		err = groupService.DeleteById(context.Background(), req.Id)
+		err = groupService.DeleteById(r.Context(), id)
 		if err != nil {
 
 			if errors.Is(err, custom_errors.ErrGroupNotFound) {
@@ -206,4 +204,11 @@ func (h *GroupHandlerImpl) responseUpdatedGroup(w http.ResponseWriter, r *http.R
 func (h *GroupHandlerImpl) ResponseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
 	w.WriteHeader(status)
 	render.JSON(w, r, resp.Error(msg))
+}
+
+func (h *GroupHandlerImpl) getIdFromRequest(r *http.Request) (int64, error) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+
+	return id, err
 }

@@ -11,7 +11,7 @@ import (
 
 type JsonDecoder[T any, Dto any, Domain any] struct{}
 
-func (j JsonDecoder[T, Dto, Domain]) Decode(w http.ResponseWriter, r *http.Request, data T, h Handler[Dto, Domain]) error {
+func (j JsonDecoder[T, Dto, Domain]) Decode(w http.ResponseWriter, r *http.Request, data T, h Handler[Dto, Domain]) (T, error) {
 
 	err := render.DecodeJSON(r.Body, &data)
 	if errors.Is(err, io.EOF) {
@@ -19,16 +19,16 @@ func (j JsonDecoder[T, Dto, Domain]) Decode(w http.ResponseWriter, r *http.Reque
 		log.Println("request body is empty")
 
 		h.ResponseError(w, r, "empty request", http.StatusBadRequest)
-		return err
+		return data, err
 	}
 	if err != nil {
 		log.Printf("failed to decode request body: %v", err)
 
 		h.ResponseError(w, r, "failed to decode request", http.StatusBadRequest)
 
-		return err
+		return data, err
 	}
 
 	log.Println("request body decoded", slog.Any("request", data))
-	return nil
+	return data, nil
 }
