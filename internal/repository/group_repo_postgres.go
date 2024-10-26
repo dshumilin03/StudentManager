@@ -9,17 +9,17 @@ import (
 	"log"
 )
 
-type GroupRepoPostgres struct {
+type GroupRepositoryImplPostgres struct {
 	db *pgxpool.Pool
 }
 
-func NewGroupRepoPostgres(db *pgxpool.Pool) *GroupRepoPostgres {
-	return &GroupRepoPostgres{
+func NewGroupRepositoryImplPostgres(db *pgxpool.Pool) *GroupRepositoryImplPostgres {
+	return &GroupRepositoryImplPostgres{
 		db: db,
 	}
 }
 
-func (repo *GroupRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
+func (repo *GroupRepositoryImplPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 	database := repo.db
 
 	groups, err := database.Query(ctx,
@@ -33,7 +33,7 @@ func (repo *GroupRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 
 }
 
-func (repo *GroupRepoPostgres) Create(ctx context.Context, group domain.Group) (pgx.Rows, error) {
+func (repo *GroupRepositoryImplPostgres) Create(ctx context.Context, group domain.Group) (pgx.Rows, error) {
 	database := repo.db
 
 	_, err := database.Query(ctx,
@@ -47,7 +47,7 @@ func (repo *GroupRepoPostgres) Create(ctx context.Context, group domain.Group) (
 
 	return groupRows, err
 }
-func (repo *GroupRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row {
+func (repo *GroupRepositoryImplPostgres) GetById(ctx context.Context, id int64) pgx.Row {
 	database := repo.db
 
 	group := database.QueryRow(ctx,
@@ -55,7 +55,7 @@ func (repo *GroupRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row {
 
 	return group
 }
-func (repo *GroupRepoPostgres) Update(ctx context.Context, group domain.Group) (pgx.Rows, error) {
+func (repo *GroupRepositoryImplPostgres) Update(ctx context.Context, group domain.Group) (pgx.Rows, error) {
 	database := repo.db
 
 	_, err := database.Query(ctx,
@@ -68,7 +68,7 @@ func (repo *GroupRepoPostgres) Update(ctx context.Context, group domain.Group) (
 
 	return groupRows, err
 }
-func (repo *GroupRepoPostgres) DeleteById(ctx context.Context, id int64) error {
+func (repo *GroupRepositoryImplPostgres) DeleteById(ctx context.Context, id int64) error {
 	database := repo.db
 	_, err := database.Exec(ctx, "delete from \"group\" where id = $1", id)
 	if err != nil {
@@ -78,7 +78,7 @@ func (repo *GroupRepoPostgres) DeleteById(ctx context.Context, id int64) error {
 	return err
 }
 
-func (repo *GroupRepoPostgres) GetByGroupNumber(ctx context.Context, groupNumber string) pgx.Row {
+func (repo *GroupRepositoryImplPostgres) GetByGroupNumber(ctx context.Context, groupNumber string) pgx.Row {
 	database := repo.db
 
 	group := database.QueryRow(ctx,

@@ -9,17 +9,17 @@ import (
 	"log"
 )
 
-type StudentRepoPostgres struct {
+type StudentRepositoryImplPostgres struct {
 	db *pgxpool.Pool
 }
 
-func NewStudentRepoPostgres(db *pgxpool.Pool) *StudentRepoPostgres {
-	return &StudentRepoPostgres{
+func NewStudentRepositoryImplPostgres(db *pgxpool.Pool) *StudentRepositoryImplPostgres {
+	return &StudentRepositoryImplPostgres{
 		db: db,
 	}
 }
 
-func (repo *StudentRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
+func (repo *StudentRepositoryImplPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 	database := repo.db
 
 	students, err := database.Query(ctx,
@@ -33,7 +33,7 @@ func (repo *StudentRepoPostgres) GetAll(ctx context.Context) (pgx.Rows, error) {
 
 }
 
-func (repo *StudentRepoPostgres) Create(ctx context.Context, student domain.Student) (pgx.Rows, error) {
+func (repo *StudentRepositoryImplPostgres) Create(ctx context.Context, student domain.Student) (pgx.Rows, error) {
 	database := repo.db
 
 	_, err := database.Query(ctx,
@@ -47,7 +47,7 @@ func (repo *StudentRepoPostgres) Create(ctx context.Context, student domain.Stud
 
 	return studentRows, err
 }
-func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row {
+func (repo *StudentRepositoryImplPostgres) GetById(ctx context.Context, id int64) pgx.Row {
 	database := repo.db
 
 	student := database.QueryRow(ctx,
@@ -55,7 +55,7 @@ func (repo *StudentRepoPostgres) GetById(ctx context.Context, id int64) pgx.Row 
 
 	return student
 }
-func (repo *StudentRepoPostgres) Update(ctx context.Context, student domain.Student) (pgx.Rows, error) {
+func (repo *StudentRepositoryImplPostgres) Update(ctx context.Context, student domain.Student) (pgx.Rows, error) {
 	database := repo.db
 
 	_, err := database.Query(ctx,
@@ -69,7 +69,7 @@ func (repo *StudentRepoPostgres) Update(ctx context.Context, student domain.Stud
 
 	return studentRows, err
 }
-func (repo *StudentRepoPostgres) DeleteById(ctx context.Context, id int64) error {
+func (repo *StudentRepositoryImplPostgres) DeleteById(ctx context.Context, id int64) error {
 	database := repo.db
 	_, err := database.Exec(ctx, "delete from student where id = $1", id)
 	if err != nil {
@@ -79,7 +79,7 @@ func (repo *StudentRepoPostgres) DeleteById(ctx context.Context, id int64) error
 	return err
 }
 
-func (repo *StudentRepoPostgres) GetByEmail(ctx context.Context, email string) pgx.Row {
+func (repo *StudentRepositoryImplPostgres) GetByEmail(ctx context.Context, email string) pgx.Row {
 	database := repo.db
 
 	student := database.QueryRow(ctx,

@@ -11,7 +11,6 @@ import (
 
 func New(database config.Database) (*pgxpool.Pool, error) {
 
-	// Формирование строки подключения
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		database.Username,
 		database.Password,
@@ -31,7 +30,6 @@ func New(database config.Database) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	// Проверка соединения
 	if err := client.Ping(context.Background()); err != nil {
 		log.Fatalf("error: %v", err)
 		return nil, err

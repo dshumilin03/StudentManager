@@ -8,22 +8,23 @@ import (
 	"log"
 )
 
-type StudentService interface {
-	Create(ctx context.Context, dto dto.StudentDto) (domain.Student, error)
-	GetAll(ctx context.Context) ([]domain.Student, error)
-	GetById(ctx context.Context, id int64) (domain.Student, error)
-	Update(ctx context.Context, dto dto.StudentDto) (domain.Student, error)
+type Service[Dto any, Domain any] interface {
+	Create(ctx context.Context, dto Dto) (Domain, error)
+	GetAll(ctx context.Context) ([]Domain, error)
+	GetById(ctx context.Context, id int64) (Domain, error)
+	Update(ctx context.Context, dto Dto) (Domain, error)
 	DeleteById(ctx context.Context, id int64) error
+	GetService() Service[Dto, Domain]
+}
+
+type StudentService interface {
+	Service[dto.StudentDto, domain.Student]
 	IsStudentExistsByEmail(ctx context.Context, email string) bool
 	IsStudentExistsById(ctx context.Context, id int64) bool
 }
 
 type GroupService interface {
-	Create(ctx context.Context, dto dto.GroupDto) (domain.Group, error)
-	GetAll(ctx context.Context) ([]domain.Group, error)
-	GetById(ctx context.Context, id int64) (domain.Group, error)
-	Update(ctx context.Context, dto dto.GroupDto) (domain.Group, error)
-	DeleteById(ctx context.Context, id int64) error
+	Service[dto.GroupDto, domain.Group]
 	IsGroupExistsByNumber(ctx context.Context, groupNumber string) bool
 	IsGroupExistsById(ctx context.Context, id int64) bool
 }

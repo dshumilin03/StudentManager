@@ -1,6 +1,7 @@
 package service
 
 import (
+	"StudentManager/internal/custom_errors"
 	"StudentManager/internal/domain"
 	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
@@ -43,12 +44,12 @@ func (studentService *StudentServiceImpl) Create(
 	}
 	if studentService.IsStudentExistsByEmail(ctx, student.Email) {
 		log.Println("student already exists")
-		return domain.Student{}, errors.New("student already exists")
+		return domain.Student{}, custom_errors.ErrStudentExists
 	}
 
 	if !groupService.IsGroupExistsByNumber(ctx, student.GroupNumber) {
-		log.Println("group doesn't exist")
-		return domain.Student{}, errors.New("group doesn't exist")
+		log.Println("group does not exist")
+		return domain.Student{}, custom_errors.ErrGroupNotFound
 	}
 
 	studentRow, err := repo.Create(ctx, student)
@@ -92,8 +93,8 @@ func (studentService *StudentServiceImpl) GetById(ctx context.Context, id int64)
 	row := service.GetById(ctx, id)
 
 	if errors.Is(row.Scan(), sql.ErrNoRows) {
-		log.Println("student doesn't exist")
-		return domain.Student{}, errors.New("student doesn't exist")
+		log.Println("student does not exist")
+		return domain.Student{}, custom_errors.ErrStudentNotFound
 	}
 
 	students, err := convertStudentRowToDomain(row)
@@ -108,6 +109,7 @@ func (studentService *StudentServiceImpl) GetById(ctx context.Context, id int64)
 func (studentService *StudentServiceImpl) Update(ctx context.Context,
 	studentDto dto.StudentDto) (domain.Student, error) {
 	repo := studentService.studentRepository
+	groupService := studentService.groupService
 
 	student := domain.Student{
 		Id:          studentDto.Id,
@@ -118,8 +120,13 @@ func (studentService *StudentServiceImpl) Update(ctx context.Context,
 	}
 
 	if !studentService.IsStudentExistsById(ctx, student.Id) {
-		log.Println("student doesn't exists")
-		return domain.Student{}, errors.New("student doesn't exists")
+		log.Println("student does not exist")
+		return domain.Student{}, custom_errors.ErrStudentNotFound
+	}
+
+	if !groupService.IsGroupExistsByNumber(ctx, student.GroupNumber) {
+		log.Println("group does not exist")
+		return domain.Student{}, custom_errors.ErrGroupNotFound
 	}
 
 	studentRow, err := repo.Update(ctx, student)
@@ -142,8 +149,9 @@ func (studentService *StudentServiceImpl) DeleteById(ctx context.Context, id int
 	repo := studentService.studentRepository
 
 	if !studentService.IsStudentExistsById(ctx, id) {
-		log.Println("student doesn't exist")
-		return errors.New("student does not exist")
+		log.Println("student does not exist")
+
+		return custom_errors.ErrStudentNotFound
 	}
 	err := repo.DeleteById(ctx, id)
 	if err != nil {
@@ -201,4 +209,8 @@ func (studentService *StudentServiceImpl) IsStudentExistsById(ctx context.Contex
 	}
 
 	return true
+}
+
+func (s *StudentServiceImpl) GetService() Service[dto.StudentDto, domain.Student] {
+	return s
 }

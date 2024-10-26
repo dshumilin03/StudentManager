@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"StudentManager/internal/custom_errors"
 	"StudentManager/internal/domain"
 	"StudentManager/internal/dto"
 	resp "StudentManager/internal/http/response"
@@ -8,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"github.com/go-chi/render"
-	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -37,41 +37,30 @@ type GetStudentRequest struct {
 	FullName string `json:"full_name" env-required:"true"`
 }
 
-type StudentHandler struct {
+type StudentHandlerImpl struct {
 	service service.StudentService
 }
 
-func NewStudentHandler(service service.StudentService) *StudentHandler {
-	return &StudentHandler{service}
+func NewStudentHandlerImpl(service service.StudentService) *StudentHandlerImpl {
+	return &StudentHandlerImpl{service}
 }
 
-func (h *StudentHandler) CreateStudent() http.HandlerFunc {
+func (h *StudentHandlerImpl) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
 
 		var req CreateStudentRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[CreateStudentRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("response", req))
 
 		if req.Age == 0 || req.Email == "" || req.FullName == "" || req.GroupNumber == "" {
 			log.Println("invalid request")
 
-			h.responseError(w, r, "invalid request", http.StatusBadRequest)
+			h.ResponseError(w, r, "invalid request", http.StatusBadRequest)
 			return
 		}
 
@@ -84,15 +73,12 @@ func (h *StudentHandler) CreateStudent() http.HandlerFunc {
 
 		student, err := studentService.Create(context.Background(), studentDto)
 		if err != nil {
-			if err.Error() == "student already exists" {
-				h.responseError(w, r, "student already exists", http.StatusBadRequest)
-				return
-			} else if err.Error() == "group doesn't exist" {
-				h.responseError(w, r, "group doesn't exist", http.StatusBadRequest)
+			if errors.Is(err, custom_errors.ErrStudentExists) || errors.Is(err, custom_errors.ErrGroupExists) {
+				h.ResponseError(w, r, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			h.responseError(w, r, "failed to create student", http.StatusInternalServerError)
+			h.ResponseError(w, r, "failed to create student", http.StatusInternalServerError)
 			return
 		}
 
@@ -100,14 +86,14 @@ func (h *StudentHandler) CreateStudent() http.HandlerFunc {
 	}
 }
 
-func (h *StudentHandler) GetAllStudents() http.HandlerFunc {
+func (h *StudentHandlerImpl) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
 
 		students, err := studentService.GetAll(context.Background())
 		if err != nil {
 
-			h.responseError(w, r, "failed to get student", http.StatusNotFound)
+			h.ResponseError(w, r, "failed to get student", http.StatusNotFound)
 			return
 		}
 
@@ -115,36 +101,25 @@ func (h *StudentHandler) GetAllStudents() http.HandlerFunc {
 	}
 }
 
-func (h *StudentHandler) GetStudentById() http.HandlerFunc {
+func (h *StudentHandlerImpl) GetById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
 
 		var req StudentIdRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[StudentIdRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("request", req))
 
 		student, err := studentService.GetById(context.Background(), req.Id)
 		if err != nil {
-			if err.Error() == "student doesn't exist" {
-				h.responseError(w, r, "student doesn't exist", http.StatusNotFound)
+			if errors.Is(err, custom_errors.ErrStudentNotFound) {
+				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
 			}
 
-			h.responseError(w, r, "failed to get student", http.StatusNotFound)
+			h.ResponseError(w, r, "failed to get student", http.StatusNotFound)
 			return
 		}
 
@@ -152,24 +127,15 @@ func (h *StudentHandler) GetStudentById() http.HandlerFunc {
 	}
 }
 
-func (h *StudentHandler) UpdateStudent() http.HandlerFunc {
+func (h *StudentHandlerImpl) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
 
 		var req UpdateStudentRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[UpdateStudentRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
 
@@ -186,13 +152,12 @@ func (h *StudentHandler) UpdateStudent() http.HandlerFunc {
 		student, err := studentService.Update(context.Background(), studentDto)
 
 		if err != nil {
-			if err.Error() == "student doesn't exist" {
-
-				h.responseError(w, r, "student doesn't exist", http.StatusNotFound)
+			if errors.Is(err, custom_errors.ErrStudentNotFound) {
+				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
 				return
 			}
 
-			h.responseError(w, r, "failed to update student", http.StatusInternalServerError)
+			h.ResponseError(w, r, "failed to update student", http.StatusInternalServerError)
 			return
 		}
 
@@ -200,39 +165,27 @@ func (h *StudentHandler) UpdateStudent() http.HandlerFunc {
 	}
 }
 
-func (h *StudentHandler) DeleteStudentById() http.HandlerFunc {
+func (h *StudentHandlerImpl) DeleteById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		studentService := h.service
-
 		var req StudentIdRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[StudentIdRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("request", req))
 
 		err = studentService.DeleteById(context.Background(), req.Id)
 		if err != nil {
 
-			if err.Error() == "student does not exist" {
+			if errors.Is(err, custom_errors.ErrStudentNotFound) {
 
-				h.responseError(w, r, "student doesn't exist", http.StatusNotFound)
+				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
 				return
 			}
 
-			h.responseError(w, r, "failed to delete student", http.StatusInternalServerError)
+			h.ResponseError(w, r, "failed to delete student", http.StatusInternalServerError)
 			return
 		}
 
@@ -240,27 +193,27 @@ func (h *StudentHandler) DeleteStudentById() http.HandlerFunc {
 	}
 }
 
-func (h *StudentHandler) responseFoundStudents(w http.ResponseWriter, r *http.Request, students []domain.Student) {
+func (h *StudentHandlerImpl) responseFoundStudents(w http.ResponseWriter, r *http.Request, students []domain.Student) {
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, resp.StudentsResponse(students))
 }
 
-func (h *StudentHandler) responseFoundStudent(w http.ResponseWriter, r *http.Request, student domain.Student) {
+func (h *StudentHandlerImpl) responseFoundStudent(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, resp.StudentResponse(student))
 }
 
-func (h *StudentHandler) responseStudentCreated(w http.ResponseWriter, r *http.Request, student domain.Student) {
+func (h *StudentHandlerImpl) responseStudentCreated(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusCreated)
 	render.JSON(w, r, resp.StudentResponse(student))
 }
 
-func (h *StudentHandler) responseStudentUpdated(w http.ResponseWriter, r *http.Request, student domain.Student) {
+func (h *StudentHandlerImpl) responseStudentUpdated(w http.ResponseWriter, r *http.Request, student domain.Student) {
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, resp.StudentResponse(student))
 }
 
-func (h *StudentHandler) responseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
+func (h *StudentHandlerImpl) ResponseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
 	w.WriteHeader(status)
 	render.JSON(w, r, resp.Error(msg))
 }

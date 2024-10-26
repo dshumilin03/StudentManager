@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"StudentManager/internal/custom_errors"
 	"StudentManager/internal/domain"
 	"StudentManager/internal/dto"
 	resp "StudentManager/internal/http/response"
@@ -8,9 +9,7 @@ import (
 	"context"
 	"errors"
 	"github.com/go-chi/render"
-	"io"
 	"log"
-	"log/slog"
 	"net/http"
 )
 
@@ -31,36 +30,26 @@ type GetGroupRequest struct {
 	GroupNumber string `json:"group_number" env-required:"true"`
 }
 
-type GroupHandler struct {
+type GroupHandlerImpl struct {
 	service service.GroupService
 }
 
-func NewGroupHandler(service service.GroupService) *GroupHandler {
-	return &GroupHandler{
+func NewGroupHandlerImpl(service service.GroupService) *GroupHandlerImpl {
+	return &GroupHandlerImpl{
 		service: service,
 	}
 }
 
-func (h *GroupHandler) CreateGroup() http.HandlerFunc {
+func (h *GroupHandlerImpl) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 		var req CreateGroupRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[CreateGroupRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("response", req))
 
 		if req.GroupNumber != "" {
 
@@ -70,13 +59,13 @@ func (h *GroupHandler) CreateGroup() http.HandlerFunc {
 
 			group, err := groupService.Create(context.Background(), groupDto)
 			if err != nil {
-				if err.Error() == "group already exists" {
+				if errors.Is(err, custom_errors.ErrGroupExists) {
 
-					h.responseError(w, r, err.Error(), http.StatusBadRequest)
+					h.ResponseError(w, r, err.Error(), http.StatusBadRequest)
 					return
 				}
 
-				h.responseError(w, r, "failed to create group", http.StatusInternalServerError)
+				h.ResponseError(w, r, "failed to create group", http.StatusInternalServerError)
 				return
 			}
 
@@ -85,20 +74,20 @@ func (h *GroupHandler) CreateGroup() http.HandlerFunc {
 		} else {
 			log.Println("invalid request")
 
-			h.responseError(w, r, "invalid request", http.StatusBadRequest)
+			h.ResponseError(w, r, "invalid request", http.StatusBadRequest)
 			return
 		}
 	}
 }
 
-func (h *GroupHandler) GetAllGroups() http.HandlerFunc {
+func (h *GroupHandlerImpl) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 
 		groups, err := groupService.GetAll(context.Background())
 		if err != nil {
 
-			h.responseError(w, r, "failed to get groups", http.StatusInternalServerError)
+			h.ResponseError(w, r, "failed to get groups", http.StatusInternalServerError)
 			return
 		}
 
@@ -106,33 +95,25 @@ func (h *GroupHandler) GetAllGroups() http.HandlerFunc {
 	}
 }
 
-func (h *GroupHandler) GetGroupById() http.HandlerFunc {
+func (h *GroupHandlerImpl) GetById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 
 		var req GroupIdRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[GroupIdRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("request", req))
 
 		group, err := groupService.GetById(context.Background(), req.Id)
 		if err != nil {
+			if errors.Is(err, custom_errors.ErrGroupNotFound) {
+				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
+			}
 
-			h.responseError(w, r, "failed to get group", http.StatusNotFound)
+			h.ResponseError(w, r, "failed to get group", http.StatusNotFound)
 			return
 		}
 
@@ -140,28 +121,17 @@ func (h *GroupHandler) GetGroupById() http.HandlerFunc {
 	}
 }
 
-func (h *GroupHandler) UpdateGroup() http.HandlerFunc {
+func (h *GroupHandlerImpl) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 		// TODO write json decoder struct
 		var req UpdateGroupRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[UpdateGroupRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("response", req))
 
 		groupDto := dto.GroupDto{
 			Id:          req.Id,
@@ -171,12 +141,12 @@ func (h *GroupHandler) UpdateGroup() http.HandlerFunc {
 		group, err := groupService.Update(context.Background(), groupDto)
 
 		if err != nil {
-			if err.Error() == "group doesn't exist" {
-				h.responseError(w, r, "group doesn't exist", http.StatusNotFound)
+			if errors.Is(err, custom_errors.ErrGroupNotFound) {
+				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
 				return
 			}
 
-			h.responseError(w, r, "failed to update group", http.StatusInternalServerError)
+			h.ResponseError(w, r, "failed to update group", http.StatusInternalServerError)
 			return
 		}
 
@@ -184,42 +154,28 @@ func (h *GroupHandler) UpdateGroup() http.HandlerFunc {
 	}
 }
 
-func (h *GroupHandler) DeleteGroupById() http.HandlerFunc {
+func (h *GroupHandlerImpl) DeleteById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupService := h.service
 
 		var req GroupIdRequest
 
-		err := render.DecodeJSON(r.Body, &req)
-		if errors.Is(err, io.EOF) {
-
-			log.Println("request body is empty")
-
-			h.responseError(w, r, "empty request", http.StatusBadRequest)
-			return
-		}
+		d := JsonDecoder[GroupIdRequest, dto.GroupDto, domain.Group]{}
+		err := d.Decode(w, r, req, h)
 		if err != nil {
-			log.Printf("failed to decode request body: %v", err)
-
-			h.responseError(w, r, "failed to decode request", http.StatusBadRequest)
-
 			return
 		}
-
-		log.Println("request body decoded", slog.Any("request", req))
 
 		err = groupService.DeleteById(context.Background(), req.Id)
 		if err != nil {
 
-			// TODO make own types of errors
-			if err.Error() == "group does not exist" {
+			if errors.Is(err, custom_errors.ErrGroupNotFound) {
 				w.WriteHeader(http.StatusNotFound)
-				// TODO write instead of word group or student, domain
-				h.responseError(w, r, "group doesn't exist", http.StatusNotFound)
+				h.ResponseError(w, r, err.Error(), http.StatusNotFound)
 				return
 			}
 
-			h.responseError(w, r, "failed to delete group", http.StatusInternalServerError)
+			h.ResponseError(w, r, "failed to delete group", http.StatusInternalServerError)
 			return
 		}
 
@@ -227,27 +183,27 @@ func (h *GroupHandler) DeleteGroupById() http.HandlerFunc {
 	}
 }
 
-func (h *GroupHandler) responseFoundGroups(w http.ResponseWriter, r *http.Request, groups []domain.Group) {
+func (h *GroupHandlerImpl) responseFoundGroups(w http.ResponseWriter, r *http.Request, groups []domain.Group) {
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, resp.GroupsResponse(groups))
 }
 
-func (h *GroupHandler) responseFoundGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
+func (h *GroupHandlerImpl) responseFoundGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, resp.GroupResponse(group))
 }
 
-func (h *GroupHandler) responseCreatedGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
+func (h *GroupHandlerImpl) responseCreatedGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
 	w.WriteHeader(http.StatusCreated)
 	render.JSON(w, r, resp.GroupResponse(group))
 }
 
-func (h *GroupHandler) responseUpdatedGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
+func (h *GroupHandlerImpl) responseUpdatedGroup(w http.ResponseWriter, r *http.Request, group domain.Group) {
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, resp.GroupResponse(group))
 }
 
-func (h *GroupHandler) responseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
+func (h *GroupHandlerImpl) ResponseError(w http.ResponseWriter, r *http.Request, msg string, status int) {
 	w.WriteHeader(status)
 	render.JSON(w, r, resp.Error(msg))
 }

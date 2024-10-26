@@ -1,6 +1,7 @@
 package service
 
 import (
+	"StudentManager/internal/custom_errors"
 	"StudentManager/internal/domain"
 	"StudentManager/internal/dto"
 	"StudentManager/internal/repository"
@@ -37,7 +38,7 @@ func (repo *GroupServiceImpl) Create(
 	if repo.IsGroupExistsByNumber(ctx, group.GroupNumber) {
 
 		log.Println("group already exists")
-		return domain.Group{}, errors.New("group already exists")
+		return domain.Group{}, custom_errors.ErrGroupExists
 	}
 	groupRow, err := service.Create(ctx, group)
 
@@ -81,8 +82,8 @@ func (repo *GroupServiceImpl) GetById(ctx context.Context, id int64) (domain.Gro
 
 	row := service.GetById(ctx, id)
 	if errors.Is(row.Scan(), sql.ErrNoRows) {
-		log.Printf("group doesn't exist")
-		return domain.Group{}, errors.New("group doesn't exist")
+		log.Printf("group does not exist")
+		return domain.Group{}, custom_errors.ErrGroupNotFound
 	}
 
 	group, err := convertGroupRowToDomain(row)
@@ -106,8 +107,8 @@ func (repo *GroupServiceImpl) Update(ctx context.Context,
 	}
 
 	if !repo.IsGroupExistsById(ctx, group.Id) {
-		log.Println("group doesn't exist")
-		return domain.Group{}, errors.New("group doesn't exist")
+		log.Println("group does not exist")
+		return domain.Group{}, custom_errors.ErrGroupNotFound
 	}
 
 	groupRow, err := service.Update(ctx, group)
@@ -132,8 +133,8 @@ func (repo *GroupServiceImpl) DeleteById(ctx context.Context, id int64) error {
 	service := repo.repo
 
 	if !repo.IsGroupExistsById(ctx, id) {
-		log.Println("group doesn't exist")
-		return errors.New("group doesn't exist")
+		log.Println("group does not exist")
+		return custom_errors.ErrGroupNotFound
 	}
 	err := service.DeleteById(ctx, id)
 	if err != nil {
@@ -195,4 +196,8 @@ func (repo *GroupServiceImpl) IsGroupExistsById(ctx context.Context, id int64) b
 	}
 
 	return true
+}
+
+func (g *GroupServiceImpl) GetService() Service[dto.GroupDto, domain.Group] {
+	return g
 }
